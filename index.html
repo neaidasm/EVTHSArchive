@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EVTHS Supervision — Programme Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+body{background:#f0f2f5;color:#252423;min-height:100vh}
+
+/* ── Top bar ── */
+.topbar{background:#1f3864;color:#fff;height:48px;display:flex;align-items:center;padding:0 20px;gap:16px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.topbar .logo{font-size:13px;font-weight:700;letter-spacing:.5px;opacity:.95}
+.topbar .subtitle{font-size:11px;opacity:.65;margin-left:4px}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.last-refresh{font-size:11px;opacity:.55}
+
+/* ── Page tabs ── */
+.tabs{background:#fff;border-bottom:1px solid #ddd;display:flex;padding:0 20px;position:sticky;top:48px;z-index:99;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.tab{padding:11px 18px;font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:#605e5c;white-space:nowrap;transition:all .15s}
+.tab:hover{color:#1f3864;background:#f3f4f6}
+.tab.active{color:#1f3864;border-bottom-color:#1f7cd5}
+
+/* ── Layout ── */
+.layout{display:flex;min-height:calc(100vh - 94px)}
+
+/* ── Filter panel ── */
+.filters{width:220px;min-width:220px;background:#fff;border-right:1px solid #e1dfdd;padding:16px 14px;overflow-y:auto;position:sticky;top:94px;height:calc(100vh - 94px)}
+.filter-title{font-size:11px;font-weight:700;color:#605e5c;text-transform:uppercase;letter-spacing:.8px;margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid #edebe9}
+.filter-title:first-child{margin-top:0}
+.filter-group{margin-bottom:4px}
+.filter-item{display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:4px;cursor:pointer;font-size:12.5px;color:#323130;transition:background .1s}
+.filter-item:hover{background:#f3f4f6}
+.filter-item input[type=checkbox]{accent-color:#1f7cd5;width:13px;height:13px;cursor:pointer}
+.filter-item.active{background:#deecf9;color:#1f3864;font-weight:600}
+.filter-count{margin-left:auto;font-size:10px;color:#a19f9d;background:#f3f4f6;border-radius:10px;padding:1px 6px}
+.date-inputs{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.date-inputs input{width:100%;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:11.5px;color:#323130}
+.date-inputs label{font-size:11px;color:#605e5c}
+.clear-btn{width:100%;padding:6px;background:#f3f4f6;border:1px solid #ddd;border-radius:4px;font-size:11.5px;cursor:pointer;color:#605e5c;margin-top:10px;font-weight:600}
+.clear-btn:hover{background:#edebe9}
+
+/* ── Main content ── */
+.main{flex:1;padding:20px;overflow-y:auto;min-width:0}
+.page{display:none}.page.active{display:block}
+
+/* ── Cards row ── */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.kpi-card{background:#fff;border-radius:6px;padding:14px 16px;border:1px solid #e1dfdd;position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:2px 0 0 2px}
+.kpi-card.blue::before{background:#1f7cd5}
+.kpi-card.teal::before{background:#00b69b}
+.kpi-card.amber::before{background:#f59e0b}
+.kpi-card.red::before{background:#dc3545}
+.kpi-card.green::before{background:#198754}
+.kpi-card.purple::before{background:#6f42c1}
+.kpi-label{font-size:11px;color:#605e5c;font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.kpi-value{font-size:26px;font-weight:700;color:#252423;line-height:1.1}
+.kpi-sub{font-size:11px;color:#a19f9d;margin-top:4px}
+.kpi-badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;margin-top:5px}
+.kpi-badge.good{background:#d4edda;color:#155724}
+.kpi-badge.warn{background:#fff3cd;color:#856404}
+.kpi-badge.bad{background:#f8d7da;color:#721c24}
+
+/* ── Charts ── */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.chart-grid.three{grid-template-columns:1fr 1fr 1fr}
+.chart-grid.full{grid-template-columns:1fr}
+.chart-card{background:#fff;border-radius:6px;border:1px solid #e1dfdd;padding:16px;min-width:0}
+.chart-head{font-size:13px;font-weight:700;color:#1f3864;margin-bottom:4px}
+.chart-sub{font-size:11px;color:#a19f9d;margin-bottom:14px}
+.chart-wrap{position:relative}
+
+/* ── Table ── */
+.tbl-card{background:#fff;border-radius:6px;border:1px solid #e1dfdd;padding:16px;margin-bottom:16px;overflow-x:auto}
+.tbl-head{font-size:13px;font-weight:700;color:#1f3864;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{background:#f8f9fa;padding:7px 10px;text-align:left;font-weight:700;color:#605e5c;font-size:11.5px;border-bottom:2px solid #dee2e6;white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid #f0f0f0;color:#323130;vertical-align:middle}
+tr:hover td{background:#f8f9fb}
+.pct-cell{display:flex;align-items:center;gap:8px}
+.pct-bar-bg{flex:1;background:#f0f2f5;border-radius:3px;height:8px;min-width:60px}
+.pct-bar-fill{height:8px;border-radius:3px;transition:width .3s}
+.pct-label{font-size:11.5px;font-weight:700;min-width:36px;text-align:right}
+.rag-green{color:#155724;background:#d4edda;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
+.rag-amber{color:#856404;background:#fff3cd;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
+.rag-red{color:#721c24;background:#f8d7da;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
+.rag-na{color:#a19f9d;font-size:11px}
+.section-tag{display:inline-block;padding:2px 8px;border-radius:3px;font-size:10.5px;font-weight:700;margin-right:6px}
+.tag-supply{background:#d6eaf8;color:#1a5276}
+.tag-equip{background:#d5f5e3;color:#145a32}
+.tag-logist{background:#fdebd0;color:#784212}
+.tag-train{background:#e8daef;color:#512e5f}
+.tag-clinical{background:#fdf2f8;color:#78281f}
+.tag-outcome{background:#ebfef4;color:#0b5345}
+
+/* ── Progress bars (Target vs Achievement) ── */
+.progress-section{margin-bottom:20px}
+.prog-row{background:#fff;border-radius:6px;border:1px solid #e1dfdd;padding:14px 18px;margin-bottom:10px}
+.prog-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.prog-title{font-size:13px;font-weight:700;color:#1f3864}
+.prog-nums{font-size:12px;color:#605e5c}
+.prog-nums span{font-weight:700;color:#252423}
+.prog-track{background:#f0f2f5;border-radius:6px;height:16px;overflow:hidden;position:relative}
+.prog-fill{height:100%;border-radius:6px;transition:width .5s;display:flex;align-items:center;justify-content:flex-end;padding-right:6px}
+.prog-fill span{font-size:10px;color:#fff;font-weight:700}
+.coord-bars{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px}
+.coord-bar{text-align:center}
+.coord-name{font-size:9.5px;color:#605e5c;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.coord-val{font-size:16px;font-weight:700;color:#1f3864}
+.coord-tgt{font-size:9.5px;color:#a19f9d}
+
+/* ── Donut legend ── */
+.donut-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;justify-content:center}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#605e5c}
+.legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+/* ── No data ── */
+.no-data{text-align:center;padding:40px;color:#a19f9d;font-size:13px}
+
+/* ── Responsive ── */
+@media(max-width:900px){.chart-grid{grid-template-columns:1fr!important}.filters{display:none}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">EVTHS SUPERVISION</span>
+  <span class="subtitle">Nagaon District · HIV & Syphilis Prevention in Pregnancy</span>
+  <div class="topbar-right">
+    <span class="last-refresh" id="refreshTime"></span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showPage('tva')">Target vs Achievement</div>
+  <div class="tab" onclick="showPage('infographics')">Infographics</div>
+  <div class="tab" onclick="showPage('dashboard')">Programme Dashboard</div>
+</div>
+
+<div class="layout">
+<!-- ════════ FILTER PANEL ════════ -->
+<div class="filters">
+  <div class="filter-title">Validation Status</div>
+  <div id="filter-validation" class="filter-group"></div>
+
+  <div class="filter-title">Facility Type</div>
+  <div id="filter-facility" class="filter-group"></div>
+
+  <div class="filter-title">Block</div>
+  <div id="filter-block" class="filter-group"></div>
+
+  <div class="filter-title">Block Coordinator</div>
+  <div id="filter-coord" class="filter-group"></div>
+
+  <div class="filter-title">District</div>
+  <div id="filter-district" class="filter-group"></div>
+
+  <div class="filter-title">Date Range</div>
+  <div class="date-inputs">
+    <div><label>From</label><input type="date" id="date-from" value="2026-02-04"></div>
+    <div><label>To</label><input type="date" id="date-to" value="2026-04-17"></div>
+  </div>
+
+  <button class="clear-btn" onclick="clearFilters()">Clear All Filters</button>
+</div>
+
+<!-- ════════ MAIN PAGES ════════ -->
+<div class="main">
+
+<!-- ─── PAGE 1: TARGET VS ACHIEVEMENT ─── -->
+<div id="page-tva" class="page active">
+  <div id="tva-content"></div>
+</div>
+
+<!-- ─── PAGE 2: INFOGRAPHICS ─── -->
+<div id="page-infographics" class="page">
+  <div id="infographics-content"></div>
+</div>
+
+<!-- ─── PAGE 3: PROGRAMME DASHBOARD ─── -->
+<div id="page-dashboard" class="page">
+  <div id="dashboard-content"></div>
+</div>
+
+</div></div>
+
+<script>
+const RAW_DATA = [{"facility":"HWC","district":"Hojai","block":"Jugijaan","sector":"nan","date":"2026-04-02","coordinator":"Rohit Kharel","validation":"Not Approved","A1":1,"A2_exp":null,"A2_buf":1,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":1,"A9":1,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":1,"D6":1,"D7":1,"B11":1,"B12":1,"E4a":1,"E5":1,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":60.0,"hwc_B2":60.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Hojai","block":"Jugijaan","sector":"nan","date":"2026-04-02","coordinator":"Rohit Kharel","validation":"Not Approved","A1":1,"A2_exp":null,"A2_buf":1,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":1,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":1,"D7":1,"B11":1,"B12":1,"E4a":1,"E5":1,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":88.0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"VHSND","district":"Nagaon","block":"Kathiatoli","sector":"Kachua","date":"2026-04-02","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":1,"A5":null,"A5b":null,"A6":null,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":null,"D5":1,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":8.0,"vhsnd_B2":0.0,"vhsnd_B3":0.0,"vhsnd_B4":0.0,"vhsnd_B5":0.0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"PHC","district":"Nagaon","block":"Kathiatoli","sector":"Kothiatoli","date":"2026-02-09","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":1,"A2_exp":null,"A2_buf":1,"A3_stk":0,"A4":1,"A5":0,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":1,"ACC2":1,"ACC3":1,"ACC5":1,"ACC6":1,"ACC7":1,"D1":0,"D2":null,"D3":0,"D4":0,"D5":1,"D6":1,"D7":null,"B11":1,"B12":1,"E4a":null,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":95.0,"phc_B3":95.0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"PHC","district":"Nagaon","block":"Simonabasti","sector":"Simonabasti","date":"2026-02-17","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":1,"A2_exp":null,"A2_buf":1,"A3_stk":1,"A4":1,"A5":0,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":1,"ACC2":1,"ACC3":1,"ACC5":1,"ACC6":1,"ACC7":1,"D1":0,"D2":null,"D3":0,"D4":1,"D5":1,"D6":1,"D7":null,"B11":1,"B12":1,"E4a":null,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":11.0,"phc_B3":106.0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"PHC","district":"Nagaon","block":"Simonabasti","sector":"Kuwaritol MPHC","date":"2026-02-18","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":0,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":1,"ACC2":1,"ACC3":1,"ACC5":1,"ACC6":1,"ACC7":1,"D1":0,"D2":null,"D3":0,"D4":0,"D5":1,"D6":0,"D7":null,"B11":0,"B12":1,"E4a":null,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":9.0,"phc_B3":33.0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"PMSMA site","district":"Nagaon","block":"Kathiatoli","sector":"Kampur","date":"2026-02-09","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":0,"A5b":0,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":1,"ACC2":1,"ACC3":1,"ACC5":0,"ACC6":1,"ACC7":1,"D1":0,"D2":null,"D3":0,"D4":null,"D5":1,"D6":0,"D7":null,"B11":0,"B12":1,"E4a":null,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":104.0,"pmsma_B11":0.0},{"facility":"PMSMA site","district":"Nagaon","block":"Simonabasti","sector":"Kuwaritol MPHC","date":"2026-02-20","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":0,"A5b":0,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":1,"ACC2":1,"ACC3":1,"ACC5":1,"ACC6":1,"ACC7":1,"D1":0,"D2":null,"D3":0,"D4":null,"D5":1,"D6":0,"D7":null,"B11":1,"B12":1,"E4a":null,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":56.0,"pmsma_B11":0.0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kothiatoli","date":"2026-02-10","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":28.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kothiatoli","date":"2026-02-12","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":41.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kothiatoli","date":"2026-02-12","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":47.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kothiatoli","date":"2026-02-13","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":136.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kampur","date":"2026-02-16","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":1,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":36.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Singiaputani","date":"2026-02-23","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":38.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kachua","date":"2026-02-24","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":1,"D7":0,"B11":1,"B12":1,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":168.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Garukhunda SHC","date":"2026-02-24","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":1,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":201.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kachua MH","date":"2026-02-25","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":118.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kampur","date":"2026-02-25","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":14.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"VHSND","district":"Nagaon","block":"Kathiatoli","sector":"Kothiatoli","date":"2026-02-11","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":0,"A5":null,"A5b":null,"A6":null,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":null,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":10.0,"vhsnd_B2":0.0,"vhsnd_B3":0.0,"vhsnd_B4":0.0,"vhsnd_B5":0.0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"VHSND","district":"Nagaon","block":"Kathiatoli","sector":"Kothiatoli","date":"2026-02-14","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":0,"A5":null,"A5b":null,"A6":null,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":null,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":11.0,"vhsnd_B2":0.0,"vhsnd_B3":0.0,"vhsnd_B4":0.0,"vhsnd_B5":0.0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"VHSND","district":"Nagaon","block":"Simonabasti","sector":"Simonabasti","date":"2026-02-18","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":0,"A5":null,"A5b":null,"A6":null,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":null,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":8.0,"vhsnd_B2":0.0,"vhsnd_B3":0.0,"vhsnd_B4":0.0,"vhsnd_B5":0.0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"VHSND","district":"Nagaon","block":"Kathiatoli","sector":"Kachua MH","date":"2026-02-25","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":1,"A5":null,"A5b":null,"A6":null,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":null,"D5":1,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":19.0,"vhsnd_B2":0.0,"vhsnd_B3":0.0,"vhsnd_B4":0.0,"vhsnd_B5":0.0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"VHSND","district":"Nagaon","block":"Kathiatoli","sector":"Kothiatoli","date":"2026-03-18","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":0,"A5":null,"A5b":null,"A6":null,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":null,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":9.0,"vhsnd_B2":0.0,"vhsnd_B3":0.0,"vhsnd_B4":0.0,"vhsnd_B5":0.0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"VHSND","district":"Nagaon","block":"Kathiatoli","sector":"Garukhunda SHC","date":"2026-04-02","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":0,"A5":null,"A5b":null,"A6":null,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":null,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":25.0,"vhsnd_B2":0.0,"vhsnd_B3":0.0,"vhsnd_B4":0.0,"vhsnd_B5":0.0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kothiatoli","date":"2026-03-06","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":1,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":21.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Nonoi SD","date":"2026-03-06","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":18.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kachua MH","date":"2026-03-10","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":126.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kachua MH","date":"2026-03-10","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":1,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":74.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kampur","date":"2026-03-10","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":10.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kachua MH","date":"2026-03-10","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":29.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kothiatoli","date":"2026-03-11","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":66.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kampur","date":"2026-03-11","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":20.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kampur","date":"2026-03-11","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":17.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kothiatoli","date":"2026-03-12","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":1,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":12.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Singimari","date":"2026-03-12","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":14.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Longjup","date":"2026-03-12","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":1,"D6":0,"D7":0,"B11":0,"B12":1,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":39.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kampur","date":"2026-03-12","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":6.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kothiatoli","date":"2026-03-12","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":1,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":54.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kachua MH","date":"2026-03-12","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":65.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Simonabasti","sector":"Kuwaritol MPHC","date":"2026-02-19","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":1,"D6":0,"D7":0,"B11":1,"B12":1,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":23.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Simonabasti","sector":"Kuwaritol MPHC","date":"2026-02-19","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":26.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Simonabasti","sector":"Kuwaritol MPHC","date":"2026-02-27","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":1,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":18.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Simonabasti","sector":"Simonabasti","date":"2026-03-05","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":1,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":32.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Simonabasti","sector":"Simonabasti","date":"2026-03-05","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":10.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Simonabasti","sector":"Simonabasti","date":"2026-03-09","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":36.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Simonabasti","sector":"Simonabasti","date":"2026-03-09","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":0,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":1,"D6":0,"D7":0,"B11":1,"B12":1,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":34.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Barhampur","date":"2026-03-13","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":18.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Nonoi","date":"2026-03-13","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":14.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kothiatoli","date":"2026-03-13","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":1,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":17.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Singimari","date":"2026-03-13","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":18.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Kachua MH","date":"2026-03-13","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":67.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Simonabasti","sector":"Simonabasti","date":"2026-03-13","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":19.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Simonabasti","sector":"Panigaon","date":"2026-03-13","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":19.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Simonabasti","sector":"Simonabasti","date":"2026-03-13","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":8.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Simonabasti","sector":"Panigaon","date":"2026-03-13","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":6.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Simonabasti","sector":"Simonabasti","date":"2026-03-13","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":1,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":7.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Kathiatoli","sector":"Koroyoni","date":"2026-03-14","coordinator":"Mayuri Kurmi","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":17.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Jakhalabandha","sector":"Jaklabanda","date":"2026-03-12","coordinator":"Dilip Pariga","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":1,"D6":0,"D7":1,"B11":1,"B12":1,"E4a":null,"E5":null,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":69.0,"hwc_B2":0.0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Jakhalabandha","sector":"Jaklabanda","date":"2026-03-12","coordinator":"Dilip Pariga","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":null,"D6":null,"D7":1,"B11":1,"B12":1,"E4a":null,"E5":null,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":69.0,"hwc_B2":0.0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Jakhalabandha","sector":"Jawani SC","date":"2026-03-12","coordinator":"Dilip Pariga","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":1,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":null,"D6":null,"D7":null,"B11":1,"B12":1,"E4a":null,"E5":null,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":157.0,"hwc_B2":0.0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Barapujia BPHC","date":"2026-02-09","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":1,"D7":1,"B11":1,"B12":1,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":11.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Amchoi SD","date":"2026-02-28","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":1,"D3":0,"D4":0,"D5":1,"D6":1,"D7":1,"B11":1,"B12":1,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":38.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Jajoi SD","date":"2026-02-20","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":12.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Amsoi SD","date":"2026-03-03","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":24.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Nagaon Urban","sector":"Moukhuli UPHC","date":"2026-03-06","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":0,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":41.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Moukhuli UPHC","date":"2026-02-24","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":6.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Jajoi","date":"2026-02-20","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":5.0,"hwc_B2":0.0,"hwc_B3":8.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Babejia Chc","date":"2026-02-17","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":37.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Nagaon Urban","sector":"Dhing gate UPHC","date":"2026-02-24","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":38.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Bhalukmari AAM","date":"2026-02-16","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":0,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":0,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":5.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Buragohianthan BPHC","date":"2026-02-20","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":1,"B12":1,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":26.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Deudhar MPHC","date":"2026-02-17","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":12.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Babejia CHC","date":"2026-03-06","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":3.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Borjoha SD","date":"2026-03-09","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":1,"B12":1,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":27.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Babejia CHC","date":"2026-02-23","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":1,"B12":1,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":29.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Barapujia BPHC","date":"2026-03-12","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":46.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Dagaon","sector":"Juria MPHC","date":"2026-03-14","coordinator":"Madhushri Dutta","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":20.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Dagaon","sector":"Dagaon","date":"2026-03-14","coordinator":"Madhushri Dutta","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":120.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Dagaon","sector":"Bunikatia","date":"2026-03-14","coordinator":"Madhushri Dutta","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Dagaon","sector":"Bolikatia","date":"2026-03-14","coordinator":"Madhushri Dutta","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":125.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"nan","district":"Nagaon","block":"Dagaon","sector":"Dagaon PHC","date":"2026-03-14","coordinator":"Madhushri Dutta","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":0,"A5":null,"A5b":null,"A6":null,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":null,"D3":null,"D4":null,"D5":0,"D6":0,"D7":null,"B11":0,"B12":0,"E4a":null,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Dhing","sector":"Batadrava","date":"2026-03-14","coordinator":"Madhushri Dutta","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":1,"D3":1,"D4":0,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":98.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Dhing","sector":"Besamari MPHC","date":"2026-03-14","coordinator":"Madhushri Dutta","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":73.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Dhing","sector":"Kandhulimari RPHC","date":"2026-03-14","coordinator":"Madhushri Dutta","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":28.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Dhing","sector":"Batadrava","date":"2026-03-14","coordinator":"Madhushri Dutta","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":null,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":56.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Dhing","sector":"Batadrava","date":"2026-03-14","coordinator":"Madhushri Dutta","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":64.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Dhing","sector":"Kandhulimari RPHC","date":"2026-03-14","coordinator":"Madhushri Dutta","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":56.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Dhing","sector":"Kandhulimari RPHC","date":"2026-03-14","coordinator":"Madhushri Dutta","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":51.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Babejia CHC","date":"2026-02-24","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":45.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Ai bhati MPHC","date":"2026-03-12","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":40.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Deudhar MPHC","date":"2026-03-12","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":25.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Jajoi SD","date":"2026-03-02","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":1,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":9.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Roha Shc","date":"2026-03-11","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":18.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Roha SHC","date":"2026-03-20","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":7.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Barapujia BPHC","date":"2026-03-20","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":9.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Mahadewsal MPHC","date":"2026-03-12","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":3.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Mohgorh MPHC","date":"2026-03-05","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":1,"B12":1,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":11.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Amsoi SD","date":"2026-03-11","coordinator":"Aditi Saikia","validation":"Not Approved","A1":1,"A2_exp":null,"A2_buf":0,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":19.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Roha SHC","date":"2026-03-23","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":17.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Buragohaithan","sector":"Mohgorh MPHC","date":"2026-02-05","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":19.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Mahadewsal SHC","date":"2026-03-11","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":0,"B12":1,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":43.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Hatichung MPHC","date":"2026-03-14","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":33.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Mahadeuhal MPHC","date":"2026-03-11","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":13.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Barapujia BPHC","date":"2026-03-02","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":0,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":5.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Phulguri SD","date":"2026-03-06","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":1,"B12":1,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":9.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Balajan SD","date":"2026-04-17","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":0,"A5":null,"A5b":null,"A6":0,"A7":0,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":1,"B11":0,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":9.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"HWC","district":"Nagaon","block":"Barapujia","sector":"Ranthali Chc","date":"2026-02-27","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":0,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":46.0,"hwc_B2":0.0,"hwc_B3":0.0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"VHSND","district":"Nagaon","block":"Barapujia","sector":"Roha SHC","date":"2026-02-04","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":1,"A5":null,"A5b":null,"A6":null,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":null,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":6.0,"vhsnd_B2":0.0,"vhsnd_B3":0.0,"vhsnd_B4":0.0,"vhsnd_B5":0.0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"VHSND","district":"Nagaon","block":"Nagaon Urban","sector":"Dhing gate UPHC","date":"2026-02-11","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":1,"A5":null,"A5b":null,"A6":null,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":null,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":8.0,"vhsnd_B2":0.0,"vhsnd_B3":0.0,"vhsnd_B4":0.0,"vhsnd_B5":0.0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"VHSND","district":"Nagaon","block":"Buragohaithan","sector":"Babejia CHC","date":"2026-03-18","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":1,"A5":null,"A5b":null,"A6":null,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":null,"D5":0,"D6":0,"D7":0,"B11":0,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":5.0,"vhsnd_B2":0.0,"vhsnd_B3":0.0,"vhsnd_B4":0.0,"vhsnd_B5":0.0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"VHSND","district":"Nagaon","block":"Buragohaithan","sector":"Babejia CHC","date":"2026-03-18","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":1,"A5":null,"A5b":null,"A6":null,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":null,"D5":0,"D6":0,"D7":0,"B11":1,"B12":0,"E4a":0,"E5":0,"vhsnd_B1":4.0,"vhsnd_B2":0.0,"vhsnd_B3":0.0,"vhsnd_B4":0.0,"vhsnd_B5":0.0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"VHSND","district":"Nagaon","block":"Barapujia","sector":"Barapujia BPHC","date":"2026-04-02","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":1,"A5":null,"A5b":null,"A6":null,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":null,"D5":0,"D6":0,"D7":1,"B11":1,"B12":1,"E4a":1,"E5":0,"vhsnd_B1":9.0,"vhsnd_B2":0.0,"vhsnd_B3":0.0,"vhsnd_B4":0.0,"vhsnd_B5":0.0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"VHSND","district":"Nagaon","block":"Buragohaithan","sector":"Deudhar MPHC","date":"2026-04-02","coordinator":"Aditi Saikia","validation":"Not Approved","A1":0,"A2_exp":null,"A2_buf":null,"A3_stk":null,"A4":1,"A5":null,"A5b":null,"A6":null,"A7":null,"A8":0,"A9":0,"ACC1":null,"ACC2":null,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":null,"D1":null,"D2":0,"D3":0,"D4":null,"D5":0,"D6":0,"D7":1,"B11":1,"B12":0,"E4a":1,"E5":0,"vhsnd_B1":15.0,"vhsnd_B2":0.0,"vhsnd_B3":0.0,"vhsnd_B4":0.0,"vhsnd_B5":0.0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"PHC","district":"Nagaon","block":"Samaguri","sector":"Samaguri","date":"2026-02-10","coordinator":"Dilip Pariga","validation":"Not Approved","A1":1,"A2_exp":null,"A2_buf":1,"A3_stk":0,"A4":1,"A5":0,"A5b":null,"A6":1,"A7":1,"A8":1,"A9":0,"ACC1":1,"ACC2":1,"ACC3":1,"ACC5":1,"ACC6":null,"ACC7":1,"D1":1,"D2":null,"D3":0,"D4":1,"D5":1,"D6":1,"D7":null,"B11":1,"B12":1,"E4a":null,"E5":null,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":52.0,"phc_B3":209.0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"PHC","district":"Nagaon","block":"Jakhalabandha","sector":"Jaklabanda","date":"2026-02-11","coordinator":"Dilip Pariga","validation":"Not Approved","A1":1,"A2_exp":null,"A2_buf":1,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":1,"A9":0,"ACC1":1,"ACC2":1,"ACC3":null,"ACC5":null,"ACC6":null,"ACC7":1,"D1":1,"D2":null,"D3":0,"D4":1,"D5":1,"D6":1,"D7":null,"B11":1,"B12":1,"E4a":null,"E5":null,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":64.0,"phc_B3":376.0,"pmsma_B1":0,"pmsma_B11":0},{"facility":"PMSMA site","district":"Nagaon","block":"Samaguri","sector":"Samaguri","date":"2026-02-19","coordinator":"Dilip Pariga","validation":"Not Approved","A1":1,"A2_exp":null,"A2_buf":1,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":1,"A9":0,"ACC1":1,"ACC2":1,"ACC3":1,"ACC5":1,"ACC6":1,"ACC7":1,"D1":1,"D2":null,"D3":0,"D4":null,"D5":1,"D6":1,"D7":null,"B11":1,"B12":1,"E4a":null,"E5":null,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":478.0,"pmsma_B11":209.0},{"facility":"PMSMA site","district":"Nagaon","block":"Samaguri","sector":"Kawaimari FRU","date":"2026-02-24","coordinator":"Dilip Pariga","validation":"Not Approved","A1":1,"A2_exp":null,"A2_buf":1,"A3_stk":null,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":1,"A9":0,"ACC1":1,"ACC2":1,"ACC3":1,"ACC5":1,"ACC6":1,"ACC7":1,"D1":1,"D2":null,"D3":0,"D4":null,"D5":null,"D6":null,"D7":null,"B11":1,"B12":1,"E4a":null,"E5":null,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":283.0,"pmsma_B11":283.0},{"facility":"PMSMA site","district":"Nagaon","block":"Jakhalabandha","sector":"Jaklabanda","date":"2026-02-11","coordinator":"Dilip Pariga","validation":"Not Approved","A1":1,"A2_exp":null,"A2_buf":1,"A3_stk":0,"A4":1,"A5":null,"A5b":null,"A6":1,"A7":1,"A8":1,"A9":0,"ACC1":1,"ACC2":1,"ACC3":1,"ACC5":1,"ACC6":1,"ACC7":1,"D1":1,"D2":null,"D3":0,"D4":null,"D5":null,"D6":null,"D7":null,"B11":1,"B12":1,"E4a":null,"E5":null,"vhsnd_B1":0,"vhsnd_B2":0,"vhsnd_B3":0,"vhsnd_B4":0,"vhsnd_B5":0,"hwc_B1":0,"hwc_B2":0,"hwc_B3":0,"phc_B1":0,"phc_B3":0,"pmsma_B1":467.0,"pmsma_B11":467.0}];
+
+const TARGETS = {
+  hwc: 78, vhsnd: 72, phc_pmsma: 78, meetings: 78, mos: 132
+};
+const COORD_TARGETS = { hwc:[16,32,10,14,6], vhsnd:[14,28,8,12,10],
+  phc_pmsma:[16,32,10,14,6], meetings:[16,16,16,16,14], mos:[26,28,24,28,26] };
+const COORDS = ['Rohit Kharel','Mayuri Kurmi','Dilip Pariga','Aditi Saikia','Madhushri Dutta'];
+
+/* ── Filter state ── */
+let filters = { validation:[], facility:[], block:[], coord:[], district:[] };
+let dateFrom = '2026-02-04', dateTo = '2026-04-17';
+
+/* ── Init filter UI ── */
+function buildFilters(){
+  const groups = {
+    validation: [...new Set(RAW_DATA.map(r=>r.validation))].sort(),
+    facility:   [...new Set(RAW_DATA.map(r=>r.facility))].sort(),
+    block:      [...new Set(RAW_DATA.map(r=>r.block))].sort(),
+    coord:      [...new Set(RAW_DATA.map(r=>r.coordinator))].sort(),
+    district:   [...new Set(RAW_DATA.map(r=>r.district))].sort(),
+  };
+  Object.entries(groups).forEach(([key, vals])=>{
+    const el = document.getElementById('filter-'+{validation:'validation',facility:'facility',block:'block',coord:'coord',district:'district'}[key]);
+    vals.forEach(v=>{
+      const cnt = RAW_DATA.filter(r=>r[{validation:'validation',facility:'facility',block:'block',coord:'coordinator',district:'district'}[key]]===v).length;
+      const d = document.createElement('div');
+      d.className='filter-item';
+      d.innerHTML=`<input type="checkbox" id="cb-${key}-${v}" data-key="${key}" data-val="${v}"><label for="cb-${key}-${v}" style="cursor:pointer;flex:1">${v}</label><span class="filter-count">${cnt}</span>`;
+      d.querySelector('input').addEventListener('change',e=>{
+        const fkey={validation:'validation',facility:'facility',block:'block',coord:'coord',district:'district'}[key];
+        if(e.target.checked){ if(!filters[fkey].includes(v)) filters[fkey].push(v); }
+        else { filters[fkey]=filters[fkey].filter(x=>x!==v); }
+        render();
+      });
+      el.appendChild(d);
+    });
+  });
+  document.getElementById('date-from').addEventListener('change',e=>{dateFrom=e.target.value;render();});
+  document.getElementById('date-to').addEventListener('change',e=>{dateTo=e.target.value;render();});
+}
+
+function clearFilters(){
+  Object.keys(filters).forEach(k=>filters[k]=[]);
+  document.querySelectorAll('.filter-item input').forEach(cb=>cb.checked=false);
+  dateFrom='2026-02-04'; dateTo='2026-04-17';
+  document.getElementById('date-from').value=dateFrom;
+  document.getElementById('date-to').value=dateTo;
+  render();
+}
+
+/* ── Filtered data ── */
+function getData(){
+  return RAW_DATA.filter(r=>{
+    if(filters.validation.length && !filters.validation.includes(r.validation)) return false;
+    if(filters.facility.length && !filters.facility.includes(r.facility)) return false;
+    if(filters.block.length && !filters.block.includes(r.block)) return false;
+    if(filters.coord.length && !filters.coord.includes(r.coordinator)) return false;
+    if(filters.district.length && !filters.district.includes(r.district)) return false;
+    if(r.date < dateFrom || r.date > dateTo) return false;
+    return true;
+  });
+}
+
+/* ── Helpers ── */
+const pct = (yes,total) => total>0 ? Math.round(yes/total*100) : null;
+const ragClass = p => p===null?'rag-na': p>=80?'rag-green': p>=50?'rag-amber':'rag-red';
+const ragText = p => p===null?'—': p+'%';
+const barColor = p => p===null?'#ccc': p>=80?'#198754': p>=50?'#f59e0b':'#dc3545';
+const pctCell = p => {
+  if(p===null) return '<span class="rag-na">—</span>';
+  return `<span class="${ragClass(p)}">${p}%</span>`;
+};
+
+function yPct(data, col, fac){
+  const rows = fac ? data.filter(r=>r.facility===fac) : data;
+  const valid = rows.filter(r=>r[col]!==null);
+  if(!valid.length) return null;
+  return pct(valid.filter(r=>r[col]===1).length, valid.length);
+}
+
+/* ── Chart registry ── */
+const charts = {};
+function destroyChart(id){
+  if(charts[id]){ charts[id].destroy(); delete charts[id]; }
+}
+function makeChart(id, config){
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if(!ctx) return;
+  charts[id] = new Chart(ctx, config);
+}
+
+/* ══════════════════════════════════════════
+   PAGE 1 — TARGET VS ACHIEVEMENT
+══════════════════════════════════════════ */
+function renderTVA(data){
+  const hwc   = data.filter(r=>r.facility==='HWC').length;
+  const vhsnd = data.filter(r=>r.facility==='VHSND').length;
+  const phc_p = data.filter(r=>r.facility==='PHC'||r.facility==='PMSMA site').length;
+
+  const achievements = [hwc, vhsnd, phc_p, 0, 0];
+  const targets = [TARGETS.hwc, TARGETS.vhsnd, TARGETS.phc_pmsma, TARGETS.meetings, TARGETS.mos];
+  const labels = ['HWC Monitored','VHSND Monitored','PHC/PMSMA Monitored','Block Meetings','MOs Trained'];
+  const colors = ['#1f7cd5','#00b69b','#6f42c1','#f59e0b','#198754'];
+
+  const coordCounts = COORDS.map(c=>({
+    name: c.split(' ')[0],
+    hwc:   data.filter(r=>r.coordinator===c && r.facility==='HWC').length,
+    vhsnd: data.filter(r=>r.coordinator===c && r.facility==='VHSND').length,
+    phcp:  data.filter(r=>r.coordinator===c && (r.facility==='PHC'||r.facility==='PMSMA site')).length,
+  }));
+
+  let html = `<div class="kpi-row">`;
+  const badges = achievements.map((a,i)=>{
+    const p = targets[i]>0 ? Math.round(a/targets[i]*100) : 0;
+    const cls = p>=80?'good':p>=50?'warn':'bad';
+    return {a, t:targets[i], p, cls};
+  });
+  const cardColors = ['blue','teal','purple','amber','green'];
+  labels.forEach((lbl,i)=>{
+    const b = badges[i];
+    html+=`<div class="kpi-card ${cardColors[i]}">
+      <div class="kpi-label">${lbl}</div>
+      <div class="kpi-value">${b.a}</div>
+      <div class="kpi-sub">of ${b.t} target</div>
+      <span class="kpi-badge ${b.cls}">${b.p}% achieved</span>
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="progress-section">`;
+  labels.forEach((lbl,i)=>{
+    const b = badges[i];
+    const w = Math.min(b.p, 100);
+    html += `<div class="prog-row">
+      <div class="prog-header">
+        <div class="prog-title">${lbl}</div>
+        <div class="prog-nums">Achievement: <span>${b.a}</span> &nbsp;|&nbsp; Target: <span>${b.t}</span></div>
+      </div>
+      <div class="prog-track">
+        <div class="prog-fill" style="width:${w}%;background:${colors[i]}">
+          <span>${b.p}%</span>
+        </div>
+      </div>`;
+
+    if(i<3){
+      const ind = ['hwc','vhsnd','phcp'][i];
+      html += `<div class="coord-bars">`;
+      coordCounts.forEach((cc,ci)=>{
+        const val = cc[ind];
+        const ctgt = Math.round(COORD_TARGETS[['hwc','vhsnd','phc_pmsma'][i]][ci]);
+        html += `<div class="coord-bar">
+          <div class="coord-name">${cc.name}</div>
+          <div class="coord-val">${val}</div>
+          <div class="coord-tgt">of ${ctgt}</div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-head">Target vs Achievement</div>
+      <div class="chart-sub">All 5 programme indicators</div>
+      <div class="chart-wrap" style="height:260px"><canvas id="c-tva-bar" role="img" aria-label="Target vs Achievement bar chart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-head">Coordinator-wise Supervision Visits</div>
+      <div class="chart-sub">Indicators 1–3 combined (HWC + VHSND + PHC/PMSMA)</div>
+      <div class="chart-wrap" style="height:260px"><canvas id="c-tva-coord" role="img" aria-label="Coordinator visits donut chart"></canvas></div>
+      <div class="donut-legend" id="coord-legend"></div>
+    </div>
+  </div>`;
+
+  document.getElementById('tva-content').innerHTML = html;
+
+  const shortLabels = ['HWC','VHSND','PHC/PMSMA','Meetings','MOs'];
+  makeChart('c-tva-bar',{
+    type:'bar',
+    data:{
+      labels: shortLabels,
+      datasets:[
+        {label:'Target', data:targets, backgroundColor:'rgba(31,124,213,0.15)', borderColor:'#1f7cd5', borderWidth:2},
+        {label:'Achievement', data:achievements, backgroundColor:colors.map(c=>c+'cc'), borderColor:colors, borderWidth:2}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{size:11}}}},
+      scales:{y:{beginAtZero:true,grid:{color:'#f0f0f0'},ticks:{font:{size:10}}}}}
+  });
+
+  const coordTotals = coordCounts.map(c=>c.hwc+c.vhsnd+c.phcp);
+  const coordColors = ['#1f7cd5','#00b69b','#6f42c1','#f59e0b','#198754'];
+  const legendEl = document.getElementById('coord-legend');
+  if(legendEl){
+    legendEl.innerHTML = COORDS.map((c,i)=>
+      `<span class="legend-item"><span class="legend-dot" style="background:${coordColors[i]}"></span>${c.split(' ')[0]}: ${coordTotals[i]}</span>`
+    ).join('');
+  }
+  makeChart('c-tva-coord',{
+    type:'doughnut',
+    data:{labels:COORDS.map(c=>c.split(' ')[0]), datasets:[{data:coordTotals, backgroundColor:coordColors, borderWidth:2, borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'60%'}
+  });
+}
+
+/* ══════════════════════════════════════════
+   PAGE 2 — INFOGRAPHICS
+══════════════════════════════════════════ */
+function renderInfographics(data){
+  const total = data.length;
+  const byFac = {HWC:0,VHSND:0,PHC:0,'PMSMA site':0};
+  data.forEach(r=>{ if(byFac[r.facility]!==undefined) byFac[r.facility]++; });
+
+  const pwScr = data.reduce((s,r)=>s+(r.vhsnd_B3||0)+(r.hwc_B2||0)+(r.phc_B3||0)+(r.pmsma_B11||0),0);
+  const pwReg = data.reduce((s,r)=>s+(r.hwc_B1||0),0);
+
+  let html = `<div class="kpi-row">
+    <div class="kpi-card blue"><div class="kpi-label">Total Facilities</div><div class="kpi-value">${total}</div><div class="kpi-sub">Supervision visits</div></div>
+    <div class="kpi-card teal"><div class="kpi-label">HWC</div><div class="kpi-value">${byFac.HWC}</div><div class="kpi-sub">Health & Wellness Centres</div></div>
+    <div class="kpi-card amber"><div class="kpi-label">VHSND</div><div class="kpi-value">${byFac.VHSND}</div><div class="kpi-sub">Village Health & Nutrition Days</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">PHC</div><div class="kpi-value">${byFac.PHC}</div><div class="kpi-sub">Primary Health Centres</div></div>
+    <div class="kpi-card green"><div class="kpi-label">PMSMA</div><div class="kpi-value">${byFac['PMSMA site']}</div><div class="kpi-sub">PMSMA Sites</div></div>
+    <div class="kpi-card red"><div class="kpi-label">PW Screened</div><div class="kpi-value">${pwScr}</div><div class="kpi-sub">Across all programmes</div></div>
+  </div>`;
+
+  // Key compliance KPIs
+  const compKPIs = [
+    ['RDT Kits Available','A1','A1',null],
+    ['Referral Slips','A8','A8',null],
+    ['IEC Materials','A9','A9',null],
+    ['MCP Card Updated','B11','B11',null],
+    ['ANM Trained (RDT)','D3','D3',null],
+    ['ART Linkage','E5','E5',null],
+  ];
+  html += `<div class="kpi-row">`;
+  compKPIs.forEach(([lbl,col])=>{
+    const p = yPct(data, col, null);
+    const cls = p===null?'':'kpi-card '+(p>=80?'green':p>=50?'amber':'red');
+    html += `<div class="${cls}" style="${p===null?'background:#fff;border:1px solid #e1dfdd;border-radius:6px;padding:14px 16px':''}">
+      <div class="kpi-label" style="font-size:10.5px">${lbl}</div>
+      <div class="kpi-value" style="font-size:22px">${p!==null?p+'%':'—'}</div>
+      <div class="kpi-sub">Overall compliance</div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-head">Visits by Facility Type</div>
+      <div class="chart-sub">Distribution of supervision visits</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="c-inf-fac" role="img" aria-label="Facility type distribution"></canvas></div>
+      <div class="donut-legend" id="fac-legend"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-head">Visits by Block</div>
+      <div class="chart-sub">Block-wise supervision coverage</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="c-inf-block" role="img" aria-label="Block-wise visits bar chart"></canvas></div>
+    </div>
+  </div>`;
+
+  html += `<div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-head">Supplies Compliance by Facility</div>
+      <div class="chart-sub">A.1 RDT kits · A.4 Consumables · A.8 Referrals · A.9 IEC</div>
+      <div class="chart-wrap" style="height:280px"><canvas id="c-inf-supply" role="img" aria-label="Supplies compliance radar chart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-head">Training Compliance by Coordinator</div>
+      <div class="chart-sub">D.3 ANM trained · D.5 PEP · D.6 Referrals · D.7 ANC tracking</div>
+      <div class="chart-wrap" style="height:280px"><canvas id="c-inf-train" role="img" aria-label="Training compliance by coordinator"></canvas></div>
+    </div>
+  </div>`;
+
+  html += `<div class="chart-grid full">
+    <div class="chart-card">
+      <div class="chart-head">Supervision Activity Over Time</div>
+      <div class="chart-sub">Number of supervision visits per week</div>
+      <div class="chart-wrap" style="height:220px"><canvas id="c-inf-trend" role="img" aria-label="Supervision activity trend over time"></canvas></div>
+    </div>
+  </div>`;
+
+  document.getElementById('infographics-content').innerHTML = html;
+
+  // Facility donut
+  const facColors=['#1f7cd5','#00b69b','#6f42c1','#f59e0b'];
+  const facLabels=['HWC','VHSND','PHC','PMSMA'];
+  const facVals=[byFac.HWC,byFac.VHSND,byFac.PHC,byFac['PMSMA site']];
+  document.getElementById('fac-legend').innerHTML=facLabels.map((l,i)=>
+    `<span class="legend-item"><span class="legend-dot" style="background:${facColors[i]}"></span>${l}: ${facVals[i]}</span>`).join('');
+  makeChart('c-inf-fac',{type:'doughnut',data:{labels:facLabels,datasets:[{data:facVals,backgroundColor:facColors,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'55%'}});
+
+  // Block bar
+  const blockCounts={};
+  data.forEach(r=>{ blockCounts[r.block]=(blockCounts[r.block]||0)+1; });
+  const bLabels=Object.keys(blockCounts).sort((a,b)=>blockCounts[b]-blockCounts[a]);
+  makeChart('c-inf-block',{type:'bar',data:{labels:bLabels,datasets:[{label:'Visits',data:bLabels.map(b=>blockCounts[b]),
+    backgroundColor:'#1f7cd5cc',borderColor:'#1f7cd5',borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{beginAtZero:true,grid:{color:'#f0f0f0'},ticks:{font:{size:10}}},y:{ticks:{font:{size:10}}}}}});
+
+  // Supplies radar
+  const supCols=['A1','A2_exp','A4','A8','A9'];
+  const supLabels=['RDT Kits','Expiry OK','Consumables','Referral Slips','IEC Materials'];
+  const facs=['HWC','VHSND','PHC','PMSMA site'];
+  const facRGB=['31,124,213','0,182,155','111,66,193','245,158,11'];
+  const radarDatasets=facs.map((fac,i)=>({
+    label:fac,
+    data:supCols.map(col=>yPct(data,col,fac)||0),
+    borderColor:`rgb(${facRGB[i]})`,backgroundColor:`rgba(${facRGB[i]},0.1)`,borderWidth:2,pointRadius:3
+  }));
+  makeChart('c-inf-supply',{type:'radar',data:{labels:supLabels,datasets:radarDatasets},
+    options:{responsive:true,maintainAspectRatio:false,scales:{r:{beginAtZero:true,max:100,ticks:{font:{size:9},stepSize:25},pointLabels:{font:{size:10}}}},
+      plugins:{legend:{labels:{font:{size:10}}}}}});
+
+  // Training by coordinator
+  const trainCols=['D3','D5','D6','D7'];
+  const trainLabels=['D.3 ANM','D.5 PEP','D.6 Referrals','D.7 ANC'];
+  const coordColors2=['#1f7cd5','#00b69b','#6f42c1','#f59e0b','#198754'];
+  const trainDatasets=COORDS.map((c,i)=>({
+    label:c.split(' ')[0],
+    data:trainCols.map(col=>{
+      const rows=data.filter(r=>r.coordinator===c);
+      const valid=rows.filter(r=>r[col]!==null);
+      return valid.length?Math.round(valid.filter(r=>r[col]===1).length/valid.length*100):0;
+    }),
+    backgroundColor:coordColors2[i]+'cc',borderColor:coordColors2[i],borderWidth:2
+  }));
+  makeChart('c-inf-train',{type:'bar',data:{labels:trainLabels,datasets:trainDatasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{size:10}}}},
+      scales:{y:{beginAtZero:true,max:100,ticks:{font:{size:10},callback:v=>v+'%'}},x:{ticks:{font:{size:10}}}}}});
+
+  // Trend line
+  const weekCounts={};
+  data.forEach(r=>{
+    if(!r.date||r.date==='NaT') return;
+    const d=new Date(r.date);
+    const mon=new Date(d); mon.setDate(d.getDate()-d.getDay()+1);
+    const wk=mon.toISOString().split('T')[0];
+    weekCounts[wk]=(weekCounts[wk]||0)+1;
+  });
+  const wkLabels=Object.keys(weekCounts).sort();
+  makeChart('c-inf-trend',{type:'line',data:{labels:wkLabels,datasets:[{label:'Visits',data:wkLabels.map(w=>weekCounts[w]),
+    borderColor:'#1f7cd5',backgroundColor:'rgba(31,124,213,0.1)',fill:true,tension:0.3,pointRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:9},maxRotation:45}},y:{beginAtZero:true,ticks:{font:{size:10}}}}}});
+}
+
+/* ══════════════════════════════════════════
+   PAGE 3 — PROGRAMME DASHBOARD
+══════════════════════════════════════════ */
+function renderDashboard(data){
+  const total = data.length;
+  const byFac = {HWC:data.filter(r=>r.facility==='HWC').length, VHSND:data.filter(r=>r.facility==='VHSND').length,
+    PHC:data.filter(r=>r.facility==='PHC').length, PMSMA:data.filter(r=>r.facility==='PMSMA site').length};
+
+  let html = `<div class="kpi-row">
+    <div class="kpi-card blue"><div class="kpi-label">Total Visits</div><div class="kpi-value">${total}</div><div class="kpi-sub">Filtered records</div></div>
+    <div class="kpi-card teal"><div class="kpi-label">HWC</div><div class="kpi-value">${byFac.HWC}</div></div>
+    <div class="kpi-card amber"><div class="kpi-label">VHSND</div><div class="kpi-value">${byFac.VHSND}</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">PHC</div><div class="kpi-value">${byFac.PHC}</div></div>
+    <div class="kpi-card green"><div class="kpi-label">PMSMA</div><div class="kpi-value">${byFac.PMSMA}</div></div>
+  </div>`;
+
+  // Compliance table builder
+  function compTable(title, tag, tagClass, rows){
+    let t = `<div class="tbl-card">
+      <div class="tbl-head"><span class="section-tag ${tagClass}">${tag}</span>${title}</div>
+      <table><thead><tr><th style="width:38%">Indicator</th><th>VHSND</th><th>HWC</th><th>PHC</th><th>PMSMA</th><th>Overall</th></tr></thead><tbody>`;
+    rows.forEach(([lbl,col,facs])=>{
+      t+=`<tr><td>${lbl}</td>`;
+      ['VHSND','HWC','PHC','PMSMA site'].forEach(fac=>{
+        if(facs && !facs.includes(fac)){ t+=`<td><span class="rag-na">—</span></td>`; return; }
+        const p=yPct(data,col,fac);
+        t+=`<td>${pctCell(p)}</td>`;
+      });
+      const allRows = facs ? data.filter(r=>facs.includes(r.facility)) : data;
+      const valid = allRows.filter(r=>r[col]!==null);
+      const ov = valid.length ? pct(valid.filter(r=>r[col]===1).length,valid.length) : null;
+      t+=`<td><div class="pct-cell"><div class="pct-bar-bg"><div class="pct-bar-fill" style="width:${ov||0}%;background:${barColor(ov)}"></div></div><span class="pct-label" style="color:${barColor(ov)}">${ov!==null?ov+'%':'—'}</span></div></td></tr>`;
+    });
+    t+=`</tbody></table></div>`;
+    return t;
+  }
+
+  html += compTable('Supplies Compliance','SUPPLIES','tag-supply',[
+    ['A.1 RDT kits available','A1',null],
+    ['A.2 Kits within expiry','A2_exp',null],
+    ['A.2 Buffer stock maintained','A2_buf',['HWC','PHC']],
+    ['A.3 Stock-out (last 3 months) ⚠','A3_stk',null],
+    ['A.4 Consumables available','A4',null],
+    ['A.5 Benzathine Penicillin','A5',['PHC','PMSMA site']],
+    ['A.8 Referral slips','A8',null],
+    ['A.9 IEC materials displayed','A9',null],
+  ]);
+
+  html += compTable('Equipment & Cold Chain','EQUIPMENT','tag-equip',[
+    ['A.6 Refrigerator functional','A6',['HWC','PHC','PMSMA site']],
+    ['A.7 Electricity backup','A7',['HWC','PHC','PMSMA site']],
+    ['A-CC.1 Fridge for RDT kits','ACC1',['HWC','PHC','PMSMA site']],
+    ['A-CC.2 Temp +2°C to +8°C','ACC2',['HWC','PHC','PMSMA site']],
+    ['A-CC.3 Temperature chart AM+PM','ACC3',['HWC','PHC','PMSMA site']],
+    ['A-CC.5 Power backup','ACC5',['HWC','PHC','PMSMA site']],
+    ['A-CC.6 Fridge properly used','ACC6',['HWC','PHC','PMSMA site']],
+    ['A-CC.7 Thermometer available','ACC7',['HWC','PHC','PMSMA site']],
+  ]);
+
+  html += compTable('Training & Capacity','TRAINING','tag-train',[
+    ['D.1 MO aware of EVTHS guidelines','D1',['PHC','PMSMA site']],
+    ['D.2 CHO trained on dual RDT','D2',['HWC','VHSND']],
+    ['D.3 ANM/MPW trained on dual RDT','D3',null],
+    ['D.4 Lab Tech trained on dual RDT','D4',['HWC','PHC']],
+    ['D.5 Needle-stick / PEP awareness','D5',null],
+    ['D.6 Referral pathways understood','D6',null],
+    ['D.7 ANM/ASHA in ANC tracking','D7',['HWC','VHSND']],
+  ]);
+
+  html += compTable('Clinical Practice & Follow-up','CLINICAL','tag-clinical',[
+    ['B.11 MCP card updated','B11',null],
+    ['B.12 BMW segregated','B12',null],
+    ['E.4a Testing in RCH register','E4a',null],
+    ['E.5 ART Centre linkage','E5',null],
+  ]);
+
+  // Outcome counts
+  html += `<div class="tbl-card">
+    <div class="tbl-head"><span class="section-tag tag-outcome">OUTCOMES</span>Service Delivery Counts & Ratios</div>
+    <div class="chart-grid" style="margin-top:12px">`;
+
+  const vhsndB1=data.reduce((s,r)=>s+(r.vhsnd_B1||0),0);
+  const vhsndB2=data.reduce((s,r)=>s+(r.vhsnd_B2||0),0);
+  const vhsndB3=data.reduce((s,r)=>s+(r.vhsnd_B3||0),0);
+  const vhsndB4=data.reduce((s,r)=>s+(r.vhsnd_B4||0),0);
+  const hwcB1=data.reduce((s,r)=>s+(r.hwc_B1||0),0);
+  const hwcB2=data.reduce((s,r)=>s+(r.hwc_B2||0),0);
+  const hwcB3=data.reduce((s,r)=>s+(r.hwc_B3||0),0);
+  const phcB1=data.reduce((s,r)=>s+(r.phc_B1||0),0);
+  const phcB3=data.reduce((s,r)=>s+(r.phc_B3||0),0);
+  const pmsB1=data.reduce((s,r)=>s+(r.pmsma_B1||0),0);
+  const pmsB11=data.reduce((s,r)=>s+(r.pmsma_B11||0),0);
+
+  function outTbl(title, rows){
+    let t=`<div style="min-width:0"><div style="font-size:12px;font-weight:700;color:#1f3864;margin-bottom:8px">${title}</div>
+      <table style="width:100%"><thead><tr><th>Indicator</th><th>Count</th><th>Ratio</th></tr></thead><tbody>`;
+    rows.forEach(([lbl,val,ratio,rLabel])=>{
+      const rStr = ratio!==null ? `<span style="color:#198754;font-weight:700">${Math.round(ratio*10)/10}%</span>` : '—';
+      t+=`<tr><td style="font-size:11.5px">${lbl}</td><td style="font-weight:700;color:#1f3864">${Math.round(val)}</td><td title="${rLabel||''}">${rStr}</td></tr>`;
+    });
+    t+=`</tbody></table></div>`;
+    return t;
+  }
+  const r = (a,b)=>b>0?a/b*100:null;
+
+  html += outTbl('VHSND Outcomes',[
+    ['B.1 PW attending',vhsndB1,null,''],
+    ['B.2 PW counselled',vhsndB2,r(vhsndB2,vhsndB1),'B2/B1'],
+    ['B.3 PW screened',vhsndB3,r(vhsndB3,vhsndB1),'B3/B1 screening rate'],
+    ['B.4 PW reactive',vhsndB4,r(vhsndB4,vhsndB3),'B4/B3 reactivity'],
+  ]);
+  html += outTbl('HWC Outcomes',[
+    ['B.1 PW registered',hwcB1,null,''],
+    ['B.2 PW screened',hwcB2,r(hwcB2,hwcB1),'B2/B1 screening rate'],
+    ['B.3 PW reactive',hwcB3,r(hwcB3,hwcB2),'B3/B2 reactivity'],
+  ]);
+  html += outTbl('PHC Outcomes',[
+    ['B.1 ANC registrations',phcB1,null,''],
+    ['B.3 PW screened HIV',phcB3,r(phcB3,phcB1),'B3/B1 screening rate'],
+  ]);
+  html += outTbl('PMSMA Outcomes',[
+    ['BP1 PW attending',pmsB1,null,''],
+    ['BP1.1 PW screened',pmsB11,r(pmsB11,pmsB1),'BP1.1/BP1 screening rate'],
+  ]);
+
+  html += `</div></div>`;
+
+  // Compliance summary chart
+  html += `<div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-head">Overall Compliance Summary</div>
+      <div class="chart-sub">Average % Yes across key indicator groups</div>
+      <div class="chart-wrap" style="height:280px"><canvas id="c-db-comp" role="img" aria-label="Compliance summary bar chart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-head">Block-wise Facility Coverage</div>
+      <div class="chart-sub">Stacked visits by block and facility type</div>
+      <div class="chart-wrap" style="height:280px"><canvas id="c-db-block" role="img" aria-label="Block facility coverage stacked chart"></canvas></div>
+    </div>
+  </div>`;
+
+  document.getElementById('dashboard-content').innerHTML = html;
+
+  // Compliance summary
+  const compGroups = [
+    ['Supplies',['A1','A2_exp','A4','A8','A9']],
+    ['Equipment',['A6','A7','ACC1','ACC2','ACC3']],
+    ['Training',['D1','D2','D3','D5','D6']],
+    ['Clinical',['B11','B12','E4a','E5']],
+  ];
+  const compAvgs = compGroups.map(([_,cols])=>{
+    const vals = cols.map(c=>{const v=yPct(data,c,null);return v;}).filter(v=>v!==null);
+    return vals.length ? Math.round(vals.reduce((s,v)=>s+v,0)/vals.length) : 0;
+  });
+  makeChart('c-db-comp',{type:'bar',
+    data:{labels:compGroups.map(g=>g[0]),datasets:[{label:'Avg Compliance %',data:compAvgs,
+      backgroundColor:compAvgs.map(v=>v>=80?'rgba(25,135,84,0.7)':v>=50?'rgba(245,158,11,0.7)':'rgba(220,53,69,0.7)'),
+      borderColor:compAvgs.map(v=>v>=80?'#198754':v>=50?'#f59e0b':'#dc3545'),borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,max:100,ticks:{font:{size:10},callback:v=>v+'%'}},x:{ticks:{font:{size:11}}}}}});
+
+  // Block stacked
+  const blocks=[...new Set(data.map(r=>r.block))].sort();
+  const facC=['#1f7cd5','#00b69b','#6f42c1','#f59e0b'];
+  const facK=['HWC','VHSND','PHC','PMSMA site'];
+  const blockDatasets=facK.map((fac,i)=>({
+    label:fac,
+    data:blocks.map(b=>data.filter(r=>r.block===b&&r.facility===fac).length),
+    backgroundColor:facC[i]+'cc',borderColor:facC[i],borderWidth:1
+  }));
+  const blockH = Math.max(260, blocks.length*36+80);
+  document.querySelector('#c-db-block').parentElement.style.height=blockH+'px';
+  makeChart('c-db-block',{type:'bar',data:{labels:blocks,datasets:blockDatasets},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{labels:{font:{size:10}}}},
+      scales:{x:{beginAtZero:true,stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{font:{size:10}}}}}});
+}
+
+/* ── Page switching ── */
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.target.classList.add('active');
+  render();
+}
+
+/* ── Main render ── */
+function render(){
+  const data = getData();
+  const active = document.querySelector('.page.active').id.replace('page-','');
+  if(active==='tva') renderTVA(data);
+  else if(active==='infographics') renderInfographics(data);
+  else if(active==='dashboard') renderDashboard(data);
+}
+
+/* ── Init ── */
+buildFilters();
+render();
+document.getElementById('refreshTime').textContent = 'Updated: '+new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
+</script>
+</body></html>
