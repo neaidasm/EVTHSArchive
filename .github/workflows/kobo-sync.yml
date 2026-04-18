@@ -1,1 +1,31 @@
+name: Sync KoboToolbox Data
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # every 5 minutes
+  workflow_dispatch:       # manual run button
+
+jobs:
+  fetch-kobo-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch Kobo data
+        run: |
+          mkdir -p data
+          curl -sS \
+            -H "Authorization: Token $KOBO_TOKEN" \
+            "$KOBO_BASE_URL/api/v2/assets/$KOBO_ASSET_UID/data/?format=json&limit=100000" \
+            > data/kobo_latest.json
+
+      - name: Commit and push data
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data/kobo_latest.json
+          git commit -m "Auto-update Kobo data" || echo "No changes"
+          git push
 
