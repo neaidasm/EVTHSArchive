@@ -226,9 +226,7 @@ tr:hover td{background:#f8f9fb}
 /* ═══════════════════════════════════════════════════════════
    CONFIG
 ═══════════════════════════════════════════════════════════ */
-const KOBO_ASSET  = 'aaHKcisJXEqPH2xkEa3XkS';
-const KOBO_TOKEN  = '376644ab507d99d198c5aadb70cc1052d58c3ff8';
-const KOBO_BASE   = 'https://kf.kobotoolbox.org';
+
 const PAGE_SIZE   = 3000;
 
 const TARGETS = { hwc:78, vhsnd:72, phc_pmsma:78, meetings:78, mos:132 };
@@ -361,77 +359,31 @@ let ALL_DATA = [];
 let isFetching = false;
 
 async function fetchData() {
-  if (isFetching) return;
-  isFetching = true;
-  document.getElementById('refreshBtn').classList.add('loading');
   document.getElementById('statusDot').className = 'status-dot loading';
-  document.getElementById('lastSync').textContent = 'Fetching…';
-  document.getElementById('loadingOverlay').classList.remove('hidden');
-  document.getElementById('loadingMsg').textContent = 'Fetching live data from KoboToolbox…';
+  document.getElementById('lastSync').textContent = 'Loading from GitHub…';
 
   try {
-    let results = [];
-    let url = `${KOBO_BASE}/api/v2/assets/${KOBO_ASSET}/data/?format=json&limit=${PAGE_SIZE}&start=0`;
-    let page = 1;
+    const resp = await fetch('./data/kobo_latest.json?ts=' + Date.now());
+    if (!resp.ok) throw new Error('Failed to load data');
 
-    while (url) {
-      document.getElementById('loadingSub').textContent =
-        `Page ${page} — ${results.length} records loaded…`;
-      const resp = await fetch(url, {
-        headers: {
-          'Authorization': `Token ${KOBO_TOKEN}`,
-          'Accept': 'application/json'
-        }
-      });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-      const json = await resp.json();
-      results = results.concat(json.results || []);
-      url = json.next || null;
-      page++;
-      // safety: max 20 pages
-      if (page > 20) break;
-    }
+    const json = await resp.json();
+    ALL_DATA = (json.results || []).map(mapRecord);
 
-    ALL_DATA = results.map(mapRecord);
     const now = new Date();
-    document.getElementById('lastSync').textContent =
-      'Live · ' + now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     document.getElementById('statusDot').className = 'status-dot';
-    document.getElementById('syncTime').textContent =
-      'Synced ' + now.toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
-    showToast(`✓ ${ALL_DATA.length} records loaded from KoboToolbox`, 'success');
-
-    // Set date range from data
-    const dates = ALL_DATA.map(r=>r.date).filter(Boolean).sort();
-    if (dates.length) {
-      document.getElementById('df').value = dates[0];
-      document.getElementById('dt').value = dates[dates.length-1];
-    }
+    document.getElementById('lastSync').textContent =
+      'Synced · ' + now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
     rebuildFilters();
     render();
 
   } catch (err) {
-    console.error('KoboToolbox fetch error:', err);
     document.getElementById('statusDot').className = 'status-dot error';
-    document.getElementById('lastSync').textContent = 'Fetch failed';
-    showToast('⚠ Could not reach KoboToolbox: ' + err.message +
-      '. Dashboard will retry or use cached data.', 'error');
-    // Keep existing ALL_DATA if we have it
-    if (ALL_DATA.length === 0) {
-      document.getElementById('loadingMsg').textContent = 'Using embedded seed data…';
-      document.getElementById('loadingSub').textContent =
-        'API unreachable — showing last known data';
-      setTimeout(()=>{ document.getElementById('loadingOverlay').classList.add('hidden'); }, 1500);
-    }
-  } finally {
-    isFetching = false;
-    document.getElementById('refreshBtn').classList.remove('loading');
-    document.getElementById('loadingOverlay').classList.add('hidden');
-    document.getElementById('recBanner').style.display = 'flex';
+    document.getElementById('lastSync').textContent = 'Load failed';
+    showToast('⚠ Could not load data from GitHub', 'error');
+    console.error(err);
   }
 }
-
 /* ═══════════════════════════════════════════════════════════
    FILTERS
 ═══════════════════════════════════════════════════════════ */
