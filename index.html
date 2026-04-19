@@ -437,7 +437,13 @@ function mapRecord(r) {
 /* ═══════════════════════════════════════════════════════════
    DATA FETCH
 ═══════════════════════════════════════════════════════════ */
+let ALL_DATA   = [];
+let isFetching = false;
 let dataSource = 'seed'; // 'seed' | 'live'
+
+const GH_OWNER  = 'neaidasm';
+const GH_REPO   = 'ETHS';
+const GH_BRANCH = 'main';
 
 /* Load the latest JSON from the data folder and update the dashboard */
 async function fetchData() {
@@ -481,63 +487,11 @@ async function fetchData() {
   }
 }
 
-let ALL_DATA = [];
-let isFetching = false;
-
-/* ═══════════════════════════════════════════════════════════
-   GITHUB CONFIG
-   NOTE: Never put a PAT in client-side HTML.
-   The workflow is triggered via GitHub Actions schedule/webhook.
-   This page only reads the output JSON file.
-═══════════════════════════════════════════════════════════ */
-const GH_OWNER    = 'neaidasm';
-const GH_REPO     = 'ETHS';
-
-/* Load the latest JSON from the data folder and update the dashboard */
-async function fetchData() {
-  if (isFetching) return;
-  isFetching = true;
-  const dot  = document.getElementById('statusDot');
-  const sync = document.getElementById('lastSync');
-  const btn  = document.getElementById('refreshBtn');
-  dot.className = 'status-dot loading';
-  if (btn) btn.classList.add('loading');
-
-  try {
-    const resp = await fetch('./data/kobo_latest.json?ts=' + Date.now());
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const json  = await resp.json();
-    // Store first raw record for debug inspection
-if (json.results && json.results.length > 0) RAW_SAMPLE = json.results[0];
-const fresh = (json.results || []).map(mapRecord);
-    if (fresh.length > 0) ALL_DATA = fresh;
-
-    const now = new Date();
-    dot.className = 'status-dot';
-    sync.textContent = 'Synced · ' + now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
-    rebuildFilters();
-    render();
-  } catch (err) {
-    dot.className = 'status-dot error';
-    sync.textContent = 'Load failed';
-    showToast('⚠ Could not load data file. Try clicking Refresh.');
-    console.error('[fetchData]', err);
-  } finally {
-    isFetching = false;
-    if (btn) btn.classList.remove('loading');
-  }
-}
-
 /* Reload data from the static JSON file — no PAT needed */
 async function triggerRefresh() {
-  if (isFetching) return;
-  const btn  = document.getElementById('refreshBtn');
-  const sync = document.getElementById('lastSync');
-  if (btn) { btn.innerHTML = '⏳ Loading…'; btn.classList.add('loading'); }
-  sync.textContent = 'Reloading data…';
   await fetchData();
-  if (btn) { btn.innerHTML = '↻ Refresh'; btn.classList.remove('loading'); }
 }
+
 /* ═══════════════════════════════════════════════════════════
    FILTERS
 ═══════════════════════════════════════════════════════════ */
