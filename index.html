@@ -437,9 +437,16 @@ let ALL_DATA   = [];
 let isFetching = false;
 let dataSource = 'seed'; // 'seed' | 'live'
 
-const GH_OWNER  = 'neaidasm';
-const GH_REPO   = 'ETHS';
-const GH_BRANCH = 'main';
+const GH_OWNER    = 'neaidasm';
+const GH_REPO     = 'ETHS';
+const GH_BRANCH   = 'main';
+const GH_WORKFLOW = 'fetch_kobo_data.yml';
+const GH_PAT      = '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';
+const GH_HEADERS  = {
+  'Authorization': 'Bearer ' + GH_PAT,
+  'Accept': 'application/vnd.github+json',
+  'X-GitHub-Api-Version': '2022-11-28'
+};
 
 /* Load the latest JSON from the data folder and update the dashboard */
 async function fetchData() {
@@ -484,19 +491,6 @@ async function fetchData() {
 }
 
 /* Reload data from the static JSON file — no PAT needed */
-/* ═══════════════════════════════════════════════════════════
-   GITHUB CONFIG
-═══════════════════════════════════════════════════════════ */
-const GH_OWNER    = 'neaidasm';
-const GH_REPO     = 'ETHS';
-const GH_WORKFLOW = 'fetch_kobo_data.yml';
-const GH_PAT      = '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';
-const GH_HEADERS  = {
-  'Authorization': 'Bearer ' + GH_PAT,
-  'Accept': 'application/vnd.github+json',
-  'X-GitHub-Api-Version': '2022-11-28'
-};
-
 async function triggerRefresh() {
   await fetchData();
 }
