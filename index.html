@@ -255,17 +255,20 @@ const FAC_COLORS   = {'HWC':'#1f7cd5','VHSND':'#00b69b','PHC':'#6f42c1','PMSMA s
 ═══════════════════════════════════════════════════════════ */
 function findKey(obj, patterns) {
   const keys = Object.keys(obj);
+  // normalise: lowercase + strip all non-alphanumeric (incl. unicode dashes/hyphens)
+  const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g,'');
+  const normKeys = keys.map(k => norm(k));
   for (const p of patterns) {
     if (obj[p] !== undefined) return obj[p];                          // exact
     const lp = p.toLowerCase();
     const h1 = keys.find(k => k.toLowerCase() === lp);
     if (h1) return obj[h1];                                           // case-insensitive
-    const ps = lp.replace(/[^a-z0-9]/g,'');
-    const h2 = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g,'') === ps);
-    if (h2) return obj[h2];                                           // strip-exact
-    if (ps.length >= 4) {
-      const h3 = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g,'').includes(ps));
-      if (h3) return obj[h3];                                         // partial-include
+    const np = norm(p);
+    const idx2 = normKeys.indexOf(np);
+    if (idx2 !== -1) return obj[keys[idx2]];                          // strip-exact
+    if (np.length >= 4) {
+      const idx3 = normKeys.findIndex(nk => nk.includes(np) || np.includes(nk));
+      if (idx3 !== -1) return obj[keys[idx3]];                        // partial-include
     }
   }
   return undefined;
@@ -326,97 +329,102 @@ function mapRecord(r) {
   const num = val => { const n = parseFloat(val); return isNaN(n) ? 0 : n; };
 
   // ── Supplies ──
-  const A1     = yn(findKey(r,['A.1 Dual HIV\u2013Syphilis RDT kits available?','A.1 Dual HIV-Syphilis RDT kits available?','A_1_Dual_HIV','A1_RDT','A_1']));
-  const A2_exp = yn(findKey(r,['A.2 Kits within expiry date?','A_2_Kits_within_expiry','A2_exp','A_2_expiry']));
-  const A2_buf = yn(findKey(r,['A.2 Buffer stock maintained as per norms?','A_2_Buffer_stock','A2_buf','A_2_buffer']));
-  const A3_stk = yn(findKey(r,['A.3 Any stock-out in the last 3 months?','A_3_Any_stock_out','A3_stk','A_3']));
-  const A4     = yn(findKey(r,['A.4 Gloves, lancets, alcohol swabs available?','A_4_Gloves','A4','A_4']));
-  const A5     = yn(findKey(r,['A.5 Injection benzathine penicillin available? (PHC/PMSMA)','A.5 Injection benzathine penicillin available?','A_5_Injection','A5','A_5']));
-  const A5b    = yn(findKey(r,['A.5b ARV prophylaxis (Syrup Nevirapine / Zidovudine) available? (PMSMA)','A_5b_ARV','A5b','A_5b']));
-  const A6     = yn(findKey(r,['A.6 Refrigerator available & functional? (PHC/HWC/PMSMA)','A.6 Refrigerator available & functional?','A_6_Refrigerator','A6','A_6']));
-  const A7     = yn(findKey(r,['A.7 Functional electricity backup available? (PHC/HWC/PMSMA)','A.7 Functional electricity backup available?','A_7_Functional_electricity','A7','A_7']));
-  const A8     = yn(findKey(r,['A.8 Referral slips available?','A_8_Referral_slips','A8','A_8']));
-  const A9     = yn(findKey(r,['A.9 IEC materials displayed (HIV, Syphilis, VT / HEI care)?','A.9 IEC materials displayed','A_9_IEC','A9','A_9']));
+  const A1     = yn(findKey(r,['A.1 Dual HIV\u2013Syphilis RDT kits available?','A.1 Dual HIV-Syphilis RDT kits available?','A_1_Dual_HIV_Syphilis_RDT_kits_available','A_1','A1_RDT','A1']));
+  const A2_exp = yn(findKey(r,['A.2 Kits within expiry date?','A_2_Kits_within_expiry_date','A_2_expiry','A2_exp','A_2']));
+  const A2_buf = yn(findKey(r,['A.2 Buffer stock maintained as per norms?','A_2_Buffer_stock_maintained_as_per_norms','A_2_buffer','A2_buf']));
+  const A3_stk = yn(findKey(r,['A.3 Any stock-out in the last 3 months?','A_3_Any_stock_out_in_the_last_3_months','A_3_Any_stock_out','A3_stk','A_3']));
+  const A4     = yn(findKey(r,['A.4 Gloves, lancets, alcohol swabs available?','A_4_Gloves_lancets_alcohol_swabs_available','A_4_Gloves','A4','A_4']));
+  const A5     = yn(findKey(r,['A.5 Injection benzathine penicillin available? (PHC/PMSMA)','A.5 Injection benzathine penicillin available?','A_5_Injection_benzathine_penicillin_available','A_5_Injection','A5','A_5']));
+  const A5b    = yn(findKey(r,['A.5b ARV prophylaxis (Syrup Nevirapine / Zidovudine) available? (PMSMA)','A_5b_ARV_prophylaxis','A_5b_ARV','A5b','A_5b']));
+  const A6     = yn(findKey(r,['A.6 Refrigerator available & functional? (PHC/HWC/PMSMA)','A.6 Refrigerator available & functional?','A_6_Refrigerator_available_functional','A_6_Refrigerator','A6','A_6']));
+  const A7     = yn(findKey(r,['A.7 Functional electricity backup available? (PHC/HWC/PMSMA)','A.7 Functional electricity backup available?','A_7_Functional_electricity_backup_available','A_7_Functional_electricity','A7','A_7']));
+  const A8     = yn(findKey(r,['A.8 Referral slips available?','A_8_Referral_slips_available','A_8_Referral_slips','A8','A_8']));
+  const A9     = yn(findKey(r,['A.9 IEC materials displayed (HIV, Syphilis, VT / HEI care)?','A.9 IEC materials displayed','A_9_IEC_materials_displayed','A_9_IEC','A9','A_9']));
 
   // ── Cold chain ──
-  const ACC1  = yn(findKey(r,['A\u2011CC.1 Refrigerator available & functional for RDT kits?','A-CC.1 Refrigerator available & functional for RDT kits?','A_CC_1','ACC1']));
-  const ACC2  = yn(findKey(r,['A\u2011CC.2 Temp maintained between +2\u00b0C to +8\u00b0C?','A-CC.2 Temp maintained between +2\u00b0C to +8\u00b0C?','A_CC_2','ACC2']));
-  const ACC3  = yn(findKey(r,['A\u2011CC.3 Temperature chart updated (AM+PM)?','A-CC.3 Temperature chart updated (AM+PM)?','A_CC_3','ACC3']));
-  const ACC4  = yn(findKey(r,['A\u2011CC.4 Any temperature excursion in last 3 months?','A-CC.4 Any temperature excursion in last 3 months?','A_CC_4','ACC4']));
-  const ACC5  = yn(findKey(r,['A\u2011CC.5 Power backup available (DG/Inverter/Solar)?','A-CC.5 Power backup available (DG/Inverter/Solar)?','A_CC_5','ACC5']));
-  const ACC6  = yn(findKey(r,['A\u2011CC.6 Medicine fridge properly used (no eatables, etc.)?','A-CC.6 Medicine fridge properly used (no food)?','A_CC_6','ACC6']));
-  const ACC7  = yn(findKey(r,['A\u2011CC.7 Thermometer available?','A-CC.7 Thermometer available?','A_CC_7','ACC7']));
-  const ACC8  = yn(findKey(r,['A\u2011CC.8 Buffer stock (\u22651 month) maintained?','A-CC.8 Buffer stock maintained?','A_CC_8','ACC8']));
-  const ACC9  = yn(findKey(r,['A\u2011CC.9 No stock\u2011out of dual kits in last 3 months?','A-CC.9 No stock-out of dual kits in last 3 months?','A_CC_9','ACC9']));
-  const ACC10 = yn(findKey(r,['A\u2011CC.10 Kits transported in cold box with conditioned ice packs?','A-CC.10 Kits transported in cold box with ice packs?','A_CC_10','ACC10']));
-  const ACC11 = yn(findKey(r,['A\u2011CC.11 Temperature maintained during outreach session?','A-CC.11 Temperature maintained during outreach session?','A_CC_11','ACC11']));
-  const ACC12 = yn(findKey(r,['A\u2011CC.12 Unused kits returned & stored immediately?','A-CC.12 Unused kits returned & stored immediately?','A_CC_12','ACC12']));
-  const ACC13 = yn(findKey(r,['A\u2011CC.13 Cold box/vaccine carrier in good condition?','A-CC.13 Cold box/vaccine carrier in good condition?','A_CC_13','ACC13']));
+  const ACC1  = yn(findKey(r,['A\u2011CC.1 Refrigerator available & functional for RDT kits?','A-CC.1 Refrigerator available & functional for RDT kits?','A_CC_1_Refrigerator','A_CC_1','ACC1']));
+  const ACC2  = yn(findKey(r,['A\u2011CC.2 Temp maintained between +2\u00b0C to +8\u00b0C?','A-CC.2 Temp maintained between +2\u00b0C to +8\u00b0C?','A_CC_2_Temp_maintained','A_CC_2','ACC2']));
+  const ACC3  = yn(findKey(r,['A\u2011CC.3 Temperature chart updated (AM+PM)?','A-CC.3 Temperature chart updated (AM+PM)?','A_CC_3_Temperature_chart','A_CC_3','ACC3']));
+  const ACC4  = yn(findKey(r,['A\u2011CC.4 Any temperature excursion in last 3 months?','A-CC.4 Any temperature excursion in last 3 months?','A_CC_4_Any_temperature_excursion','A_CC_4','ACC4']));
+  const ACC5  = yn(findKey(r,['A\u2011CC.5 Power backup available (DG/Inverter/Solar)?','A-CC.5 Power backup available (DG/Inverter/Solar)?','A_CC_5_Power_backup','A_CC_5','ACC5']));
+  const ACC6  = yn(findKey(r,['A\u2011CC.6 Medicine fridge properly used (no eatables, etc.)?','A-CC.6 Medicine fridge properly used (no food)?','A_CC_6_Medicine_fridge','A_CC_6','ACC6']));
+  const ACC7  = yn(findKey(r,['A\u2011CC.7 Thermometer available?','A-CC.7 Thermometer available?','A_CC_7_Thermometer','A_CC_7','ACC7']));
+  const ACC8  = yn(findKey(r,['A\u2011CC.8 Buffer stock (\u22651 month) maintained?','A-CC.8 Buffer stock maintained?','A_CC_8_Buffer_stock','A_CC_8','ACC8']));
+  const ACC9  = yn(findKey(r,['A\u2011CC.9 No stock\u2011out of dual kits in last 3 months?','A-CC.9 No stock-out of dual kits in last 3 months?','A_CC_9_No_stock_out','A_CC_9','ACC9']));
+  const ACC10 = yn(findKey(r,['A\u2011CC.10 Kits transported in cold box with conditioned ice packs?','A-CC.10 Kits transported in cold box with ice packs?','A_CC_10_Kits_transported','A_CC_10','ACC10']));
+  const ACC11 = yn(findKey(r,['A\u2011CC.11 Temperature maintained during outreach session?','A-CC.11 Temperature maintained during outreach session?','A_CC_11_Temperature_maintained','A_CC_11','ACC11']));
+  const ACC12 = yn(findKey(r,['A\u2011CC.12 Unused kits returned & stored immediately?','A-CC.12 Unused kits returned & stored immediately?','A_CC_12_Unused_kits','A_CC_12','ACC12']));
+  const ACC13 = yn(findKey(r,['A\u2011CC.13 Cold box/vaccine carrier in good condition?','A-CC.13 Cold box/vaccine carrier in good condition?','A_CC_13_Cold_box','A_CC_13','ACC13']));
 
   // ── Training ──
-  const D1  = yn(findKey(r,['D.1 MO aware of EVTHS guidelines & algorithms?','D.1 MO aware of EVTHS guidelines','D_1_MO_aware','D1','D_1']));
-  const D1b = yn(findKey(r,['D.1b MO knows care for HIV/Syphilis\u2011exposed infants (dual prophylaxis, infant feeding, NIC referral)? (PMSMA)','D_1b','D1b']));
-  const D2  = yn(findKey(r,['D.2 CHO trained on rapid dual HIV\u2013Syphilis testing? (HWC/VHSND)','D.2 CHO trained on rapid dual HIV-Syphilis testing?','D_2_CHO','D2','D_2']));
-  const D3  = yn(findKey(r,['D.3 ANM/MPW/Staff Nurse trained on rapid dual HIV\u2013Syphilis testing?','D.3 ANM/MPW/Staff Nurse trained on rapid dual HIV-Syphilis testing?','D_3_ANM','D3','D_3']));
-  const D3b = yn(findKey(r,['D.3b Staff Nurse/ANM trained on HEI feeding guidelines & dual prophylaxis? (PMSMA)','D_3b','D3b']));
-  const D4  = yn(findKey(r,['D.4 Lab Technician trained on dual RDT testing? (PHC/HWC)','D.4 Lab Technician trained on dual RDT testing?','D_4_Lab','D4','D_4']));
-  const D5  = yn(findKey(r,['D.5 Awareness of needle\u2011stick injury protocol & prophylaxis (PEP)?','D.5 Awareness of needle-stick injury protocol & prophylaxis (PEP)?','D_5_Awareness','D5','D_5']));
-  const D6  = yn(findKey(r,['D.6 Referral pathways for HIV & Syphilis clearly understood?','D.6 Referral pathways for HIV & Syphilis understood?','D_6_Referral','D6','D_6']));
-  const D7  = yn(findKey(r,['D.7 ANM/ASHA involved in ANC tracking & mobilisation? (HWC/VHSND)','D.7 ANM/ASHA involved in ANC tracking & mobilisation?','D_7_ANM','D7','D_7']));
+  const D1  = yn(findKey(r,['D.1 MO aware of EVTHS guidelines & algorithms?','D.1 MO aware of EVTHS guidelines','D_1_MO_aware_of_EVTHS_guidelines','D_1_MO_aware','D1','D_1']));
+  const D1b = yn(findKey(r,['D.1b MO knows care for HIV/Syphilis\u2011exposed infants (dual prophylaxis, infant feeding, NIC referral)? (PMSMA)','D_1b_MO_knows_care','D_1b','D1b']));
+  const D2  = yn(findKey(r,['D.2 CHO trained on rapid dual HIV\u2013Syphilis testing? (HWC/VHSND)','D.2 CHO trained on rapid dual HIV-Syphilis testing?','D_2_CHO_trained','D_2_CHO','D2','D_2']));
+  const D3  = yn(findKey(r,['D.3 ANM/MPW/Staff Nurse trained on rapid dual HIV\u2013Syphilis testing?','D.3 ANM/MPW/Staff Nurse trained on rapid dual HIV-Syphilis testing?','D_3_ANM_MPW_Staff_Nurse_trained','D_3_ANM','D3','D_3']));
+  const D3b = yn(findKey(r,['D.3b Staff Nurse/ANM trained on HEI feeding guidelines & dual prophylaxis? (PMSMA)','D_3b_Staff_Nurse','D_3b','D3b']));
+  const D4  = yn(findKey(r,['D.4 Lab Technician trained on dual RDT testing? (PHC/HWC)','D.4 Lab Technician trained on dual RDT testing?','D_4_Lab_Technician_trained','D_4_Lab','D4','D_4']));
+  const D5  = yn(findKey(r,['D.5 Awareness of needle\u2011stick injury protocol & prophylaxis (PEP)?','D.5 Awareness of needle-stick injury protocol & prophylaxis (PEP)?','D_5_Awareness_of_needle_stick','D_5_Awareness','D5','D_5']));
+  const D6  = yn(findKey(r,['D.6 Referral pathways for HIV & Syphilis clearly understood?','D.6 Referral pathways for HIV & Syphilis understood?','D_6_Referral_pathways','D_6_Referral','D6','D_6']));
+  const D7  = yn(findKey(r,['D.7 ANM/ASHA involved in ANC tracking & mobilisation? (HWC/VHSND)','D.7 ANM/ASHA involved in ANC tracking & mobilisation?','D_7_ANM_ASHA_involved','D_7_ANM','D7','D_7']));
 
   // ── Clinical ──
-  const B11 = yn(findKey(r,['B.11 MCP card updated with dual test results?','B.11 MCP card updated?','B_11_MCP','B11','B_11']));
-  const B12 = yn(findKey(r,['B.12 BMW segregated as per guidelines?','B.12 BMW segregated?','B_12_BMW','B12','B_12']));
-  const B8s = yn(findKey(r,['B.8 Screening before delivery for women not screened earlier during ANC?','B_8_Screening','B8']));
-  const B9  = yn(findKey(r,['B.9 Confidentiality maintained during testing and counselling?','B_9_Conf','B9']));
-  const B10 = yn(findKey(r,['B.10 Follow\u2011up of HIV\u2011positive cases conducted from ICTC and DSRC?','B.10 Follow-up of HIV-positive cases?','B_10','B10']));
-  const C1  = yn(findKey(r,['C.1 Test kits for HIV & Syphilis available in labour room?','C_1','C1']));
-  const C2  = yn(findKey(r,['C.2 All PW with unknown status tested for HIV/Syphilis?','C_2','C2']));
-  const C3  = yn(findKey(r,['C.3 Staff nurses refer HIV\u2011reactive cases to ICTC for confirmation?','C_3','C3']));
-  const C4  = yn(findKey(r,['C.4 Staff nurses conduct confirmatory testing of Syphilis\u2011reactive PW?','C_4','C4']));
-  const C5  = yn(findKey(r,['C.5 Safe delivery kits available?','C_5','C5']));
-  const E1  = yn(findKey(r,['E.1 One dose of benzathine penicillin given immediately after Syphilis reactive?','E_1','E1']));
-  const E2  = yn(findKey(r,['E.2 Completion of 3 doses for Syphilis\u2011infected PW ensured?','E_2','E2']));
-  const E3  = yn(findKey(r,['E.3 Viral load testing at 32\u201336 weeks of gestation done?','E_3','E3']));
-  const E4a = yn(findKey(r,['E.4a Do they record testing information in the RCH register?','E_4a','E4a','E_4a']));
-  const E4b = yn(findKey(r,['E.4b Index testing for HIV and partner testing of syphilis conducted?','E_4b','E4b']));
-  const E5  = yn(findKey(r,['E.5 Clear referral linkage with ART Centre?','E_5_Clear_referral','E5','E_5']));
-  const E6  = yn(findKey(r,['E.6 Community awareness on vertical transmission / ARV prophylaxis / infant feeding conducted?','E_6','E6']));
-  const E7  = yn(findKey(r,['E.7 World AIDS Day / related events observed?','E_7','E7']));
-  const BP6 = yn(findKey(r,['B.P6 Confidentiality maintained during testing and counselling?','B_P6','BP6']));
-  const BP7 = yn(findKey(r,['B.P7 Follow\u2011up of HIV\u2011positive cases conducted from ICTC and DSRC?','B_P7','BP7']));
-  const BP8 = yn(findKey(r,['B.P8 MCP card updated with dual test results?','B_P8','BP8']));
+  const B11 = yn(findKey(r,['B.11 MCP card updated with dual test results?','B.11 MCP card updated?','B_11_MCP_card_updated','B_11_MCP','B11','B_11']));
+  const B12 = yn(findKey(r,['B.12 BMW segregated as per guidelines?','B.12 BMW segregated?','B_12_BMW_segregated','B_12_BMW','B12','B_12']));
+  const B8s = yn(findKey(r,['B.8 Screening before delivery for women not screened earlier during ANC?','B_8_Screening_before_delivery','B_8_Screening','B8s','B8']));
+  const B9  = yn(findKey(r,['B.9 Confidentiality maintained during testing and counselling?','B_9_Confidentiality_maintained','B_9_Conf','B9']));
+  const B10 = yn(findKey(r,['B.10 Follow\u2011up of HIV\u2011positive cases conducted from ICTC and DSRC?','B.10 Follow-up of HIV-positive cases?','B_10_Follow_up_of_HIV_positive','B_10','B10']));
+  const C1  = yn(findKey(r,['C.1 Test kits for HIV & Syphilis available in labour room?','C_1_Test_kits_for_HIV','C_1','C1']));
+  const C2  = yn(findKey(r,['C.2 All PW with unknown status tested for HIV/Syphilis?','C_2_All_PW_with_unknown_status','C_2','C2']));
+  const C3  = yn(findKey(r,['C.3 Staff nurses refer HIV\u2011reactive cases to ICTC for confirmation?','C_3_Staff_nurses_refer','C_3','C3']));
+  const C4  = yn(findKey(r,['C.4 Staff nurses conduct confirmatory testing of Syphilis\u2011reactive PW?','C_4_Staff_nurses_conduct','C_4','C4']));
+  const C5  = yn(findKey(r,['C.5 Safe delivery kits available?','C_5_Safe_delivery_kits','C_5','C5']));
+  const E1  = yn(findKey(r,['E.1 One dose of benzathine penicillin given immediately after Syphilis reactive?','E_1_One_dose_of_benzathine','E_1','E1']));
+  const E2  = yn(findKey(r,['E.2 Completion of 3 doses for Syphilis\u2011infected PW ensured?','E_2_Completion_of_3_doses','E_2','E2']));
+  const E3  = yn(findKey(r,['E.3 Viral load testing at 32\u201336 weeks of gestation done?','E_3_Viral_load_testing','E_3','E3']));
+  const E4a = yn(findKey(r,['E.4a Do they record testing information in the RCH register?','E_4a_Do_they_record_testing','E_4a','E4a']));
+  const E4b = yn(findKey(r,['E.4b Index testing for HIV and partner testing of syphilis conducted?','E_4b_Index_testing','E_4b','E4b']));
+  const E5  = yn(findKey(r,['E.5 Clear referral linkage with ART Centre?','E_5_Clear_referral_linkage','E_5_Clear_referral','E5','E_5']));
+  const E6  = yn(findKey(r,['E.6 Community awareness on vertical transmission / ARV prophylaxis / infant feeding conducted?','E_6_Community_awareness','E_6','E6']));
+  const E7  = yn(findKey(r,['E.7 World AIDS Day / related events observed?','E_7_World_AIDS_Day','E_7','E7']));
+  const BP6 = yn(findKey(r,['B.P6 Confidentiality maintained during testing and counselling?','B_P6_Confidentiality','B_P6','BP6']));
+  const BP7 = yn(findKey(r,['B.P7 Follow\u2011up of HIV\u2011positive cases conducted from ICTC and DSRC?','B_P7_Follow_up','B_P7','BP7']));
+  const BP8 = yn(findKey(r,['B.P8 MCP card updated with dual test results?','B_P8_MCP_card','B_P8','BP8']));
+
+  // ── Outcomes — use exact column names from KoboToolbox to avoid ambiguity ──
+  // Helper: get value by exact key name only (no fuzzy matching)
+  const exact = (key) => { const v = r[key]; return (v === undefined || v === null || v === '' || v !== v) ? 0 : num(v); };
+  const exactYN = (key) => { const v = r[key]; return yn(v); };
 
   // ── Outcomes — VHSND ──
-  const vhsnd_B1 = num(findKey(r,['B.1 Total number of PW attending VHSND in last 6 months','vhsnd_B1']));
-  const vhsnd_B2 = num(findKey(r,['B.2 Number of PW counselled for screening','vhsnd_B2']));
-  const vhsnd_B3 = num(findKey(r,['B.3 Total number of PW screened in last 6 months (VHSND)','vhsnd_B3']));
-  const vhsnd_B4 = num(findKey(r,['B.4 Out of above, number screened reactive in last 6 months','vhsnd_B4']));
-  const vhsnd_B5 = num(findKey(r,['B.5 HIV\u2011reactive PW referred to ICTC for confirmation','vhsnd_B5']));
-  const vhsnd_B6 = num(findKey(r,['B.6 Syphilis\u2011reactive PW referred to linked MO\u2011PHC for confirmation','vhsnd_B6']));
+  const vhsnd_B1 = exact('B.1 Total number of PW attending VHSND in last 6 months');
+  const vhsnd_B2 = exact('B.2 Number of PW counselled for screening');
+  const vhsnd_B3 = exact('B.3 Total number of PW screened in last 6 months (VHSND)');
+  const vhsnd_B4 = exact('B.4 Out of above, number screened reactive in last 6 months');
+  const vhsnd_B5 = exact('B.5 HIV\u2011reactive PW referred to ICTC for confirmation');
+  const vhsnd_B6 = exact('B.6 Syphilis\u2011reactive PW referred to linked MO\u2011PHC for confirmation');
 
   // ── Outcomes — HWC ──
-  const hwc_B1   = num(findKey(r,['B.1 Total number of PW registered in last 6 months','hwc_B1']));
-  const hwc_B2   = num(findKey(r,['B.2 Total number of PW screened in last 6 months','hwc_B2']));
-  const hwc_B21  = num(findKey(r,['B.2.1 At the time of registration','hwc_B21']));
-  const hwc_B22  = num(findKey(r,['B.2.2 First HIV testing undertaken in 2nd trimester','hwc_B22']));
-  const hwc_B23  = num(findKey(r,['B.2.3 First HIV testing done in 3rd trimester','hwc_B23']));
-  const hwc_B24  = num(findKey(r,['B.2.4 At the time of delivery','hwc_B24']));
-  const hwc_B3   = num(findKey(r,['B.3 Out of above, number screened reactive in last 6 months','hwc_B3']));
+  const hwc_B1   = exact('B.1 Total number of PW registered in last 6 months');
+  const hwc_B2   = exact('B.2 Total number of PW screened in last 6 months');
+  const hwc_B21  = exact('B.2.1 At the time of registration');
+  const hwc_B22  = exact('B.2.2 First HIV testing undertaken in 2nd trimester');
+  const hwc_B23  = exact('B.2.3 First HIV testing done in 3rd trimester');
+  const hwc_B24  = exact('B.2.4 At the time of delivery');
+  const hwc_B3   = exact('B.3 Out of above, number screened reactive in last 6 months');
 
   // ── Outcomes — PHC ──
-  const phc_B1   = num(findKey(r,['B.1 Total number of ANC registrations in the last month','phc_B1']));
-  const phc_B1b  = num(findKey(r,['Total ANC (ANC1 + ANC2 + ANC3 + ANC4) in the last month','phc_B1b']));
-  const phc_B3   = num(findKey(r,['B.3 Total number of PW screened for HIV in last 6 months','phc_B3']));
-  const phc_B3a  = num(findKey(r,['a) At registration / 1st trimester (ANC 1st visit)','phc_B3a']));
-  const phc_B2   = num(findKey(r,['B.2 Total number of PW found HIV\u2011reactive in last 6 months','phc_B2']));
-  const phc_B4   = num(findKey(r,['B.4 Syphilis\u2011reactive PW confirmed at PHC or referred to DSRC','phc_B4']));
+  const phc_B1   = exact('B.1 Total number of ANC registrations in the last month');
+  const phc_B1b  = exact('Total ANC (ANC1 + ANC2 + ANC3 + ANC4) in the last month');
+  const phc_B3   = exact('B.3 Total number of PW screened for HIV in last 6 months');
+  const phc_B3a  = exact('a) At registration / 1st trimester (ANC 1st visit)');
+  const phc_B2   = exact('B.2 Total number of PW found HIV\u2011reactive in last 6 months');
+  const phc_B4   = exact('B.4 Syphilis\u2011reactive PW confirmed at PHC or referred to DSRC');
 
   // ── Outcomes — PMSMA ──
-  const pmsma_B1   = num(findKey(r,['B.P1 Total number of PW attending PMSMA in last 6 months','pmsma_B1']));
-  const pmsma_B11  = num(findKey(r,['B.P1.1 Number of PW screened during PMSMA in last 6 months','pmsma_B11']));
-  const pmsma_B12h = num(findKey(r,['B.P1.2 Number of PW found HIV\u2011reactive in last 6 months','pmsma_B12h']));
-  const pmsma_B12s = num(findKey(r,['B.P1.2 Number of PW found Syphilis\u2011reactive in last 6 months','pmsma_B12s']));
+  const pmsma_B1   = exact('B.P1 Total number of PW attending PMSMA in last 6 months');
+  const pmsma_B11  = exact('B.P1.1 Number of PW screened during PMSMA in last 6 months');
+  const pmsma_B12h = exact('B.P1.2 Number of PW found HIV\u2011reactive in last 6 months');
+  const pmsma_B12s = exact('B.P1.2 Number of PW found Syphilis\u2011reactive in last 6 months');
 
   return {
     _id:r['_id'], facility, district:String(findKey(r,['District','district'])||'').trim().replace(/\b\w/g,c=>c.toUpperCase()),
