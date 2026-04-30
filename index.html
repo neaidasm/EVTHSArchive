@@ -140,6 +140,12 @@ tr:hover td{background:#F0F8FF}
   <span class="toast-close" onclick="this.parentElement.classList.remove('show')">✕</span>
 </div>
 
+<!-- Debug panel -->
+<div id="debugPanel" class="debug-panel">
+  <span class="debug-close" onclick="toggleDebug()">✕ Close</span>
+  <div id="debugContent">Click 🔍 Fields after data loads to see raw KoboToolbox field names</div>
+</div>
+
 <!-- Top bar -->
 <div class="topbar">
   <span class="logo">EVTHS SUPERVISION</span>
@@ -149,6 +155,7 @@ tr:hover td{background:#F0F8FF}
     <div id="statusDot" class="status-dot loading"></div>
     <span id="lastSync" class="last-sync">Connecting…</span>
     <button class="signout-btn" onclick="logout()">⏻ Sign Out</button>
+    <button class="refresh-btn" onclick="toggleDebug()" style="background:rgba(255,165,0,.2);border-color:rgba(255,165,0,.5);font-size:10px">🔍 Fields</button>
   </div>
 </div>
 
@@ -434,40 +441,7 @@ const GH_OWNER  = 'neaidasm';
 const GH_REPO   = 'ETHS';
 const GH_BRANCH = 'main';
 
-/* ─────────────────────────────────────────────────────────
-   fetchJson — tries raw.githubusercontent.com FIRST (reflects
-   a commit instantly, no GitHub Pages deployment lag), then
-   falls back to the relative ./data/ path.
-
-   WHY THIS MATTERS:
-   GitHub Pages can take 1–10 min to deploy after a commit.
-   raw.githubusercontent.com serves the file immediately.
-   The old code only used ./data/ which is why live data
-   never loaded even when the workflow ran successfully.
-───────────────────────────────────────────────────────── */
-async function fetchJson(filename) {
-  const bust = '?nocache=' + Date.now();
-  const urls = [
-    'https://raw.githubusercontent.com/' + GH_OWNER + '/' + GH_REPO + '/' + GH_BRANCH + '/data/' + filename + bust,
-    './data/' + filename + bust,
-  ];
-  for (const url of urls) {
-    try {
-      const resp = await fetch(url);
-      if (resp.ok) {
-        const json = await resp.json();
-        console.log('[fetchData] ✅ ' + filename + ' loaded via ' + (url.includes('raw.') ? 'raw CDN' : 'Pages'));
-        return json;
-      }
-      console.warn('[fetchData] ⚠ ' + filename + ' HTTP ' + resp.status + ' from ' + (url.includes('raw.') ? 'raw CDN' : 'Pages'));
-    } catch(e) {
-      console.warn('[fetchData] ⚠ ' + filename + ' error: ' + e.message);
-    }
-  }
-  console.error('[fetchData] ❌ ' + filename + ' — all URLs failed. Workflow may not have run yet.');
-  return null;
-}
-
+/* Load the latest JSON from the data folder and update the dashboard */
 async function fetchData() {
   if (isFetching) return;
   isFetching = true;
@@ -476,27 +450,22 @@ async function fetchData() {
   dot.className = 'status-dot loading';
 
   try {
-    const [mainJson, moJson, meetJson] = await Promise.all([
-      fetchJson('kobo_latest.json'),
-      fetchJson('mo_trained.json'),
-      fetchJson('block_meetings.json'),
+    const [mainResp, moResp, meetResp] = await Promise.all([
+      fetch('./data/kobo_latest.json?ts=' + Date.now()),
+      fetch('./data/mo_trained.json?ts='  + Date.now()),
+      fetch('./data/block_meetings.json?ts=' + Date.now()),
     ]);
 
-    // Main supervision data
-    if (mainJson) {
-      const fresh = (mainJson.results || []).map(mapRecord);
-      if (fresh.length > 0) {
-        ALL_DATA   = fresh;
-        dataSource = 'live';
-      } else {
-        console.warn('[fetchData] kobo_latest.json loaded but 0 results — check workflow');
-      }
-    } else {
-      dataSource = 'seed';
-    }
+    if (!mainResp.ok) throw new Error('HTTP ' + mainResp.status);
+    const mainText = await mainResp.text();
+let mainJson;
+try { mainJson = JSON.parse(mainText); } catch(e){ console.error('[HealthCheck] Main JSON invalid', e, mainText.slice(0,200)); throw e; }
+    const fresh    = (mainJson.results || []).map(mapRecord);
+    if (fresh.length > 0) { ALL_DATA = fresh; dataSource = 'live'; }
 
     // MO Trained — sum trainee count field
-    if (moJson) {
+    if (moResp.ok) {
+      const moJson = await moResp.json();
       MO_TOTAL = (moJson.results || []).reduce((s,r) => {
         const keys = Object.keys(r);
         const key  = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g,'').includes('mostrained')
@@ -506,26 +475,19 @@ async function fetchData() {
     }
 
     // Block Meetings — count + coordinator breakdown
-    if (meetJson) {
-      MEETINGS_RAW      = meetJson.results || [];
-      MEETINGS_TOTAL    = MEETINGS_RAW.length;
+    if (meetResp.ok) {
+      const meetJson   = await meetResp.json();
+      MEETINGS_RAW     = meetJson.results || [];
+      MEETINGS_TOTAL   = MEETINGS_RAW.length;
       MEETINGS_BY_COORD = COORDS.map(c =>
         MEETINGS_RAW.filter(r => normCoordName(r['block_coordinator']) === c).length
       );
     }
 
-    const now     = new Date();
+    const now = new Date();
+    dot.className = 'status-dot';
     const timeStr = now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
-
-    if (dataSource === 'live') {
-      dot.className    = 'status-dot';
-      sync.textContent = 'Synced · ' + timeStr;
-    } else {
-      dot.className    = 'status-dot error';
-      sync.textContent = '⚠ Seed data';
-      showToast('⚠ Could not load live data — showing demo data. Open F12 Console to see which URLs were tried.');
-    }
-
+    sync.textContent = 'Synced · ' + timeStr;
     const clSync = document.getElementById('cl-lastSync');
     if (clSync) clSync.textContent = 'Updated · ' + timeStr;
 
@@ -537,7 +499,7 @@ async function fetchData() {
   } catch(err) {
     dot.className = 'status-dot error';
     const sync2 = document.getElementById('lastSync');
-    if (sync2) sync2.textContent = 'Using seed data';
+    if(sync2) sync2.textContent = 'Using seed data';
     dataSource = 'seed';
     showToast('⚠ Could not load live data. Showing demo data.');
     console.error('[fetchData]', err);
@@ -547,10 +509,6 @@ async function fetchData() {
   } finally {
     isFetching = false;
   }
-}
-
-async function triggerRefresh() {
-  await fetchData();
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1114,6 +1072,25 @@ function render(){
 /* ═══════════════════════════════════════════════════════════
    DEBUG TOOLS
 ═══════════════════════════════════════════════════════════ */
+let RAW_SAMPLE = null; // stores first raw record for inspection
+
+function toggleDebug() {
+  const panel = document.getElementById('debugPanel');
+  const content = document.getElementById('debugContent');
+  panel.classList.toggle('show');
+  if (panel.classList.contains('show') && RAW_SAMPLE) {
+    const keys = Object.keys(RAW_SAMPLE).sort();
+    let html = '<b style="color:#ff0">RAW FIELD NAMES FROM KOBOTOOLBOX (' + keys.length + ' fields in first record):</b><br><br>';
+    keys.forEach(k => {
+      const v = RAW_SAMPLE[k];
+      const display = (v === null || v === undefined) ? '<span style="color:#666">null</span>' : '<span style="color:#0ff">' + String(v).slice(0,60) + '</span>';
+      html += '<b style="color:#ff0">' + k + '</b> = ' + display + '<br>';
+    });
+    content.innerHTML = html;
+  }
+}
+
+
 /* ═══════════════════════════════════════════════════════════
    AUTH SYSTEM
 ═══════════════════════════════════════════════════════════ */
@@ -1551,3 +1528,7 @@ function renderClientDash(data) {
 
 </body>
 </html>
+
+// ✅ START live data fetch after page load
+fetchData();
+setInterval(fetchData, 5 * 60 * 1000); // refresh every 5 minutes
