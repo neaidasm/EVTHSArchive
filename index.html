@@ -1080,11 +1080,16 @@ function mkChart(id, cfg){
 const pct = (y,t) => t>0 ? Math.round(y/t*100) : null;
    
 const barClr = p => {
-  const v = Number(p);
-  if (!isFinite(v)) return '#ccc';
-  if (v >= 80) return '#80BD41';
-  if (v >= 50) return '#FFC20E';
-  return '#E2231A';
+ const barClr = p => {
+  if (p === null || p === undefined) return '#ccc';
+
+  // Handle numbers AND strings like "75%"
+  const v = parseFloat(p);
+
+  if (isNaN(v)) return '#ccc';
+  if (v >= 80) return '#80BD41';   // Green
+  if (v >= 50) return '#FFC20E';   // Amber
+  return '#E2231A';                // Red
 };
    
 const ragSpan = p => p===null ? '<span class="na">—</span>' :
