@@ -495,7 +495,6 @@ tr:hover td{background:#F0F8FF}
   <div style="background:#fff;border-bottom:1px solid #C9E8F5;display:flex;padding:0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch">
     <div id="clt-tva"  onclick="switchClientTab('tva')"  style="padding:12px 16px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid #1CABE2;color:#0058AB;white-space:nowrap;flex-shrink:0">Target vs Achievement</div>
     <div id="clt-prog" onclick="switchClientTab('prog')" style="padding:12px 16px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:#6c757d;white-space:nowrap;flex-shrink:0">Programme Dashboard</div>
-    <div id="clt-comp" onclick="switchClientTab('comp')" style="padding:12px 16px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:#6c757d;white-space:nowrap;flex-shrink:0">Compliance Dashboard</div>
   </div>
   <div style="padding:14px" id="c-client"></div>
 </div>
@@ -1978,7 +1977,7 @@ function getClientData() {
 
 function switchClientTab(tab) {
   clientTab = tab;
-  ['tva','prog','comp'].forEach(t => {
+  ['tva','prog'].forEach(t => {
     const el = document.getElementById('clt-'+t);
     if (!el) return;
     el.style.borderBottom = t===tab ? '3px solid #1CABE2' : '3px solid transparent';
@@ -1991,7 +1990,6 @@ function renderClientView() {
   const data = getClientData();
   if      (clientTab === 'tva')  renderClientDash(data);
   else if (clientTab === 'prog') renderClientProg(data);
-  else if (clientTab === 'comp') renderClientCompliance(data);
 }
 
 /* ═══════════════════════════════════════════════════════════
