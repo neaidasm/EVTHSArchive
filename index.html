@@ -479,13 +479,12 @@ tr:hover td{background:#F0F8FF}
 
 <!-- ═══ CLIENT SHELL (external users only) ═══ -->
 <div id="client-shell" style="display:none;flex-direction:column;min-height:calc(100vh - 54px)">
-  <!-- Client top bar -->
   <div style="background:#0058AB;color:#fff;height:52px;display:flex;align-items:center;padding:0 16px;gap:10px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,88,171,.3)">
     <span style="font-size:13px;font-weight:800;letter-spacing:.5px">EVTHS PROGRAMME OVERVIEW</span>
     <span style="opacity:.3;font-size:18px">|</span>
     <span style="font-size:11px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Nagaon District · HIV &amp; Syphilis Prevention in Pregnancy</span>
     <div style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-shrink:0">
-      <select id="cl-distFilter" onchange="renderClientView()" style="font-size:11px;padding:4px 10px;border:1px solid rgba(255,255,255,.3);border-radius:20px;color:#fff;background:rgba(255,255,255,.15);cursor:pointer">
+      <select id="cl-distFilter" onchange="renderClientView()" style="font-size:11px;padding:4px 10px;border:1px solid rgba(255,255,255,.3);border-radius:20px;color:#fff;background:rgba(255,255,255,.15);cursor:pointer;outline:none">
         <option value="" style="color:#000">All Districts</option>
       </select>
       <div id="cl-statusDot" class="status-dot" style="background:#80BD41"></div>
@@ -493,11 +492,10 @@ tr:hover td{background:#F0F8FF}
       <button onclick="signOut()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;cursor:pointer">⏻ Sign Out</button>
     </div>
   </div>
-  <!-- Client tabs -->
-  <div style="background:#fff;border-bottom:1px solid #C9E8F5;display:flex;padding:0 16px;position:sticky;top:52px;z-index:99;overflow-x:auto;-webkit-overflow-scrolling:touch;box-shadow:0 1px 4px rgba(0,88,171,.07)">
-    <div id="clt-tva"  onclick="switchClientTab('tva')"  style="padding:12px 16px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid #1CABE2;color:#0058AB;white-space:nowrap;transition:all .15s;flex-shrink:0">Target vs Achievement</div>
-    <div id="clt-prog" onclick="switchClientTab('prog')" style="padding:12px 16px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:#6c757d;white-space:nowrap;transition:all .15s;flex-shrink:0">Programme Dashboard</div>
-    <div id="clt-comp" onclick="switchClientTab('comp')" style="padding:12px 16px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:#6c757d;white-space:nowrap;transition:all .15s;flex-shrink:0">Compliance Dashboard</div>
+  <div style="background:#fff;border-bottom:1px solid #C9E8F5;display:flex;padding:0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch">
+    <div id="clt-tva"  onclick="switchClientTab('tva')"  style="padding:12px 16px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid #1CABE2;color:#0058AB;white-space:nowrap;flex-shrink:0">Target vs Achievement</div>
+    <div id="clt-prog" onclick="switchClientTab('prog')" style="padding:12px 16px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:#6c757d;white-space:nowrap;flex-shrink:0">Programme Dashboard</div>
+    <div id="clt-comp" onclick="switchClientTab('comp')" style="padding:12px 16px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:#6c757d;white-space:nowrap;flex-shrink:0">Compliance Dashboard</div>
   </div>
   <div style="padding:14px" id="c-client"></div>
 </div>
@@ -981,12 +979,10 @@ async function fetchData() {
     const now = new Date();
     dot.className = 'status-dot';
     sync.textContent = 'Synced · ' + now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
-    const clSyn = document.getElementById('cl-lastSync');
-    if (clSyn) clSyn.textContent = 'Updated · ' + now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    const clS = document.getElementById('cl-lastSync');
+    if (clS) clS.textContent = 'Updated · ' + now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     populateClientDistFilter();
-    if (document.getElementById('client-shell') && document.getElementById('client-shell').style.display !== 'none') {
-      renderClientView();
-    }
+    if (document.getElementById('client-shell') && document.getElementById('client-shell').style.display !== 'none') renderClientView();
     // Update client view sync time if visible
     const clSync = document.getElementById('cl-lastSync');
     if (clSync) clSync.textContent = 'Updated · ' + now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
@@ -1878,23 +1874,21 @@ function initInternalView() {
   document.getElementById('client-shell').style.display   = 'none';
 }
 
-/* ══════════════════════════════════════════════
-   CLIENT TAB SYSTEM
-══════════════════════════════════════════════ */
+/* ══ CLIENT TAB SYSTEM ══ */
 let clientTab = 'tva';
 
 function populateClientDistFilter() {
   const sel = document.getElementById('cl-distFilter');
   if (!sel) return;
-  const dists = [...new Set(ALL_DATA.map(r=>r.district).filter(Boolean))].sort();
-  const cur = sel.value;
+  const cur  = sel.value;
+  const dist = [...new Set(ALL_DATA.map(r=>r.district).filter(Boolean))].sort();
   sel.innerHTML = '<option value="" style="color:#000">All Districts</option>' +
-    dists.map(d=>`<option value="${d}" style="color:#000">${d}</option>`).join('');
+    dist.map(d=>`<option value="${d}" style="color:#000">${d}</option>`).join('');
   if (cur) sel.value = cur;
 }
 
 function getClientData() {
-  const sel = document.getElementById('cl-distFilter');
+  const sel  = document.getElementById('cl-distFilter');
   const dist = sel ? sel.value : '';
   return dist ? ALL_DATA.filter(r=>r.district===dist) : ALL_DATA;
 }
@@ -1904,33 +1898,38 @@ function switchClientTab(tab) {
   ['tva','prog','comp'].forEach(t => {
     const el = document.getElementById('clt-'+t);
     if (!el) return;
-    if (t === tab) {
-      el.style.borderBottom = '3px solid #1CABE2';
-      el.style.color = '#0058AB';
-    } else {
-      el.style.borderBottom = '3px solid transparent';
-      el.style.color = '#6c757d';
-    }
+    el.style.borderBottom = t===tab ? '3px solid #1CABE2' : '3px solid transparent';
+    el.style.color        = t===tab ? '#0058AB' : '#6c757d';
   });
   renderClientView();
 }
 
 function renderClientView() {
   const data = getClientData();
-  if (clientTab === 'tva')  renderClientDash(data);
-  else if (clientTab === 'prog') renderClientProgDash(data);
+  if      (clientTab === 'tva')  renderClientDash(data);
+  else if (clientTab === 'prog') renderClientProg(data);
   else if (clientTab === 'comp') renderClientCompliance(data);
 }
 
-function renderClientCompliance(data){
-  const total=data.length;
-  const fc={HWC:0,VHSND:0,PHC:0,PMSMA:0};
+/* ═══════════════════════════════════════════════════════════
+   CLIENT — PROGRAMME DASHBOARD (mirrors internal renderDash)
+═══════════════════════════════════════════════════════════ */
+function renderClientProg(data) {
+  const total = data.length;
+  const fc = {HWC:0,VHSND:0,PHC:0,PMSMA:0};
   data.forEach(r=>{
     if(r.facility==='HWC') fc.HWC++;
     else if(r.facility==='VHSND') fc.VHSND++;
     else if(r.facility==='PHC') fc.PHC++;
     else if(r.facility==='PMSMA site') fc.PMSMA++;
   });
+
+  const pwScr    = data.reduce((s,r)=>s+(r.vhsnd_B3||0)+(r.hwc_B2||0)+(r.phc_B3||0)+(r.pmsma_B11||0),0);
+  const hivReact = data.reduce((s,r)=>s+(r.vhsnd_B4||0)+(r.hwc_B3||0)+(r.phc_B2||0)+(r.pmsma_B12h||0),0);
+  const syphReact= data.reduce((s,r)=>s+(r.phc_B4||0)+(r.pmsma_B12s||0),0);
+  const pct_s = (a,b) => b>0?(a/b*100).toFixed(1)+'%':'—';
+  const num_s = (n,label) => `<span style="font-weight:700;color:#0058AB">${n.toLocaleString()}</span><span style="font-size:10px;color:#6c757d;margin-left:4px">${label}</span>`;
+  const sumF_p = (rows,f) => rows.reduce((s,r)=>s+(r[f]||0),0);
 
   let h = '';
 
@@ -1942,8 +1941,254 @@ function renderClientCompliance(data){
     <div class="kpi purple"><div class="kpi-lbl">PHC</div><div class="kpi-val">${fc.PHC}</div></div>
     <div class="kpi green"><div class="kpi-lbl">PMSMA</div><div class="kpi-val">${fc.PMSMA}</div></div>
     <div class="kpi red"><div class="kpi-lbl">PW Screened</div><div class="kpi-val">${pwScr.toLocaleString()}</div></div>
-    <div class="kpi navy"><div class="kpi-lbl">HIV Reactive</div><div class="kpi-val">${hivReact}</div><div class="kpi-sub">${pct(hivReact,pwScr)} of screened</div></div>
-    <div class="kpi navy"><div class="kpi-lbl">Syphilis Reactive</div><div class="kpi-val">${syphReact}</div><div class="kpi-sub">${pct(syphReact,pwScr)} of screened</div></div>
+    <div class="kpi navy"><div class="kpi-lbl">HIV Reactive</div><div class="kpi-val">${hivReact}</div><div class="kpi-sub">${pct_s(hivReact,pwScr)} of screened</div></div>
+    <div class="kpi navy"><div class="kpi-lbl">Syphilis Reactive</div><div class="kpi-val">${syphReact}</div><div class="kpi-sub">${pct_s(syphReact,pwScr)} of screened</div></div>
+  </div>`;
+
+  // ── 4 KEY SUPPLY INDICATORS SUMMARY ──
+  const keySupply_p = [
+    {lbl:'RDT Kits Available',  field:'A1'},
+    {lbl:'Referral Slips',      field:'A8'},
+    {lbl:'IEC Materials',       field:'A9'},
+    {lbl:'MCP Card Updated',    field:'B11'},
+  ];
+  h += `<div class="tbl-card" style="margin-bottom:16px">
+    <div class="tbl-title"><span class="tag t-sup">KEY SUPPLIES</span>4 Critical Supply Indicators — Overall Compliance</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:4px 0">`;
+  keySupply_p.forEach(({lbl,field})=>{
+    const recs = data.filter(r=>r[field]!==null);
+    const yes  = recs.filter(r=>r[field]===1).length;
+    const p    = recs.length ? Math.round(yes/recs.length*100) : null;
+    const clr  = p===null?'#ccc':p>=80?'#80BD41':p>=50?'#FFC20E':'#E2231A';
+    const bg   = p===null?'#f8f9fb':p>=80?'#f0fae8':p>=50?'#fffbe6':'#fceaea';
+    h += `<div style="background:${bg};border-radius:8px;padding:14px 16px;border:1px solid ${clr}40;text-align:center">
+      <div style="font-size:10px;font-weight:700;color:#374EA2;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${lbl}</div>
+      <div style="font-size:28px;font-weight:800;color:${clr}">${p!==null?p+'%':'—'}</div>
+      <div style="font-size:10px;color:#6c757d;margin-top:2px">${yes}/${recs.length} facilities</div>
+    </div>`;
+  });
+  h += `</div></div>`;
+
+  // ── TABLE BUILDER ──
+  function ctable_p(title, tag, tagCls, rows){
+    let t=`<div class="tbl-card"><div class="tbl-title"><span class="tag ${tagCls}">${tag}</span>${title}</div>
+      <table><thead><tr><th style="width:38%">Indicator</th><th>VHSND</th><th>HWC</th><th>PHC</th><th>PMSMA</th><th>Overall</th><th style="font-size:10px;color:#a19f9d">Applicability</th></tr></thead><tbody>`;
+    rows.forEach(([lbl,col,facs,note])=>{
+      t+=`<tr><td style="font-size:11.5px">${lbl}</td>`;
+      ['VHSND','HWC','PHC','PMSMA site'].forEach(fac=>{
+        if(facs&&!facs.some(f=>fac.startsWith(f)||f.startsWith(fac))){t+=`<td><span class="na">—</span></td>`;return;}
+        t+=`<td>${ragSpan(yPct(data,col,fac))}</td>`;
+      });
+      const src=facs?data.filter(r=>facs.some(f=>r.facility===f||r.facility.startsWith(f)||f.startsWith(r.facility))):data;
+      const vd=src.filter(r=>r[col]!==null);
+      const ov=vd.length?pct(vd.filter(r=>r[col]===1).length,vd.length):null;
+      t+=`<td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${ov||0}%;background:${barClr(ov)}"></div></div><span class="bar-lbl" style="color:${barClr(ov)}">${ov!==null?ov+'%':'—'}</span></div></td>`;
+      t+=`<td style="font-size:10px;color:#a19f9d">${note||'All'}</td></tr>`;
+    });
+    return t+`</tbody></table></div>`;
+  }
+
+  // ── SUPPLIES ──
+  h+=ctable_p('Supplies Compliance','SUPPLIES','t-sup',[
+    ['A.1 RDT kits available','A1',null,'All'],
+    ['A.2 Kits within expiry','A2_exp',null,'All'],
+    ['A.2 Buffer stock maintained','A2_buf',['HWC','PHC'],'HWC & PHC'],
+    ['A.3 Stock-out (last 3 months) ⚠','A3_stk',null,'All — high % = problem'],
+    ['A.4 Gloves, lancets, swabs','A4',null,'All'],
+    ['A.5 Benzathine Penicillin','A5',['PHC','PMSMA'],'PHC & PMSMA'],
+    ['A.5b ARV prophylaxis','A5b',['PMSMA'],'PMSMA only'],
+    ['A.8 Referral slips available','A8',null,'All'],
+    ['A.9 IEC materials displayed','A9',null,'All'],
+  ]);
+
+  // ── EQUIPMENT & COLD CHAIN ──
+  h+=ctable_p('Equipment & Cold Chain','EQUIPMENT','t-eq',[
+    ['A.6 Refrigerator available & functional','A6',['HWC','PHC','PMSMA'],'HWC, PHC, PMSMA'],
+    ['A.7 Functional electricity backup','A7',['HWC','PHC','PMSMA'],'HWC, PHC, PMSMA'],
+    ['A-CC.1 Fridge functional for RDT kits','ACC1',['HWC','PHC','PMSMA'],'Cold chain'],
+    ['A-CC.2 Temp +2°C to +8°C maintained','ACC2',['HWC','PHC','PMSMA'],'Cold chain'],
+    ['A-CC.3 Temperature chart updated AM+PM','ACC3',['HWC','PHC','PMSMA'],'Cold chain'],
+    ['A-CC.4 Temperature excursion (last 3m) ⚠','ACC4',['HWC','PHC','PMSMA'],'High = problem'],
+    ['A-CC.5 Power backup available','ACC5',['HWC','PHC','PMSMA'],'Cold chain'],
+    ['A-CC.6 Medicine fridge properly used','ACC6',['HWC','PHC','PMSMA'],'Cold chain'],
+    ['A-CC.7 Thermometer available','ACC7',['HWC','PHC','PMSMA'],'Cold chain'],
+  ]);
+
+  // ── LOGISTICS ──
+  h+=ctable_p('Logistics Compliance','LOGISTICS','t-cl',[
+    ['A-CC.8 Buffer stock (≥1 month)','ACC8',['HWC','PHC','PMSMA'],'Cold chain'],
+    ['A-CC.9 No stock-out of dual kits','ACC9',null,'All'],
+    ['A-CC.10 Kits in cold box with ice packs','ACC10',['VHSND'],'VHSND only'],
+    ['A-CC.11 Temp maintained during outreach','ACC11',['VHSND'],'VHSND only'],
+    ['A-CC.12 Unused kits returned immediately','ACC12',['VHSND'],'VHSND only'],
+    ['A-CC.13 Cold box in good condition','ACC13',['VHSND'],'VHSND only'],
+  ]);
+
+  // ── TRAINING / CAPACITY BUILDING ──
+  h+=ctable_p('Training & Capacity Building','TRAINING','t-tr',[
+    ['D.1 MO aware of EVTHS guidelines','D1',['PHC','PMSMA'],'PHC & PMSMA'],
+    ['D.1b MO aware of HIV/Syphilis-exposed infant care','D1b',['PMSMA'],'PMSMA only'],
+    ['D.2 CHO trained on rapid dual RDT','D2',['HWC','VHSND'],'HWC & VHSND'],
+    ['D.3 ANM/MPW/Staff Nurse trained on dual RDT','D3',null,'All'],
+    ['D.3b Staff Nurse/ANM trained on HEI feeding','D3b',['PMSMA'],'PMSMA only'],
+    ['D.4 Lab Technician trained on dual RDT','D4',['HWC','PHC'],'HWC & PHC'],
+    ['D.5 Needle-stick injury / PEP awareness','D5',null,'All'],
+    ['D.6 Referral pathways clearly understood','D6',null,'All'],
+    ['D.7 ANM/ASHA involved in ANC tracking','D7',['HWC','VHSND'],'HWC & VHSND'],
+  ]);
+
+  // ── CLINICAL ──
+  h+=ctable_p('Clinical Practice & Follow-up','CLINICAL','t-oc',[
+    ['B.11 MCP card updated with dual test results','B11',null,'All'],
+    ['B.12 BMW segregated as per guidelines','B12',null,'All'],
+    ['B.8 Screening before delivery (unknown-status PW)','B8s',['PHC'],'PHC only'],
+    ['B.9 Confidentiality maintained','B9',['PHC'],'PHC only'],
+    ['B.10 Follow-up of HIV-positive cases','B10',['PHC'],'PHC only'],
+    ['B.P6 Confidentiality maintained (PMSMA)','BP6',['PMSMA'],'PMSMA only'],
+    ['B.P7 Follow-up of HIV-positive cases (PMSMA)','BP7',['PMSMA'],'PMSMA only'],
+    ['B.P8 MCP card updated (PMSMA)','BP8',['PMSMA'],'PMSMA only'],
+    ['C.1 HIV & Syphilis test kits in labour room','C1',['PHC','PMSMA'],'PHC & PMSMA'],
+    ['C.2 PW with unknown status tested','C2',['PHC','PMSMA'],'PHC & PMSMA'],
+    ['C.5 Safe delivery kits available','C5',['PHC','PMSMA'],'PHC & PMSMA'],
+    ['E.1 Benzathine Penicillin after reactive','E1',['PHC','PMSMA'],'PHC & PMSMA'],
+    ['E.4a Testing recorded in RCH register','E4a',null,'All'],
+    ['E.4b Index/partner testing conducted','E4b',null,'All'],
+    ['E.5 Clear referral linkage with ART Centre','E5',null,'All'],
+    ['E.6 Community awareness on VT/ARV/infant feeding','E6',null,'All'],
+    ['E.7 World AIDS Day / related events observed','E7',null,'All'],
+  ]);
+
+  // ── OUTCOMES ──
+  function sumF_o(rows,f){ return rows.reduce((s,r)=>s+(r[f]||0),0); }
+  function ratio_o(a,b){ return b>0?(a/b*100).toFixed(1)+'%':'—'; }
+  function otbl_p(title,rows){
+    let t=`<div style="min-width:0"><div style="font-size:12px;font-weight:700;color:#0058AB;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #1CABE2">${title}</div>
+    <table><thead><tr><th>Indicator</th><th>Count</th><th style="color:#198754">%</th></tr></thead><tbody>`;
+    rows.forEach(([lbl,val,rat,isRatio])=>{
+      t+=`<tr style="${isRatio?'background:#f8f9fb':''}">
+        <td style="font-size:${isRatio?'10.5':'11.5'}px;color:${isRatio?'#605e5c':'#252423'}">${lbl}</td>
+        <td style="font-weight:${isRatio?'400':'700'};color:#0058AB">${isRatio?'':val}</td>
+        <td style="color:#198754;font-size:11px">${rat}</td></tr>`;
+    });
+    return t+'</tbody></table></div>';
+  }
+
+  const v_p =data.filter(r=>r.facility==='VHSND');
+  const hw_p=data.filter(r=>r.facility==='HWC');
+  const ph_p=data.filter(r=>r.facility==='PHC');
+  const pm_p=data.filter(r=>r.facility==='PMSMA site');
+
+  const vB1=sumF_o(v_p,'vhsnd_B1'),vB2=sumF_o(v_p,'vhsnd_B2'),vB3=sumF_o(v_p,'vhsnd_B3'),vB4=sumF_o(v_p,'vhsnd_B4');
+  const hB1=sumF_o(hw_p,'hwc_B1'),hB2=sumF_o(hw_p,'hwc_B2'),hB21=sumF_o(hw_p,'hwc_B21'),hB22=sumF_o(hw_p,'hwc_B22'),hB23=sumF_o(hw_p,'hwc_B23'),hB24=sumF_o(hw_p,'hwc_B24'),hB3=sumF_o(hw_p,'hwc_B3');
+  const pB1=sumF_o(ph_p,'phc_B1'),pB3=sumF_o(ph_p,'phc_B3'),pB2=sumF_o(ph_p,'phc_B2'),pB4=sumF_o(ph_p,'phc_B4');
+  const mB1=sumF_o(pm_p,'pmsma_B1'),mB11=sumF_o(pm_p,'pmsma_B11'),mB12h=sumF_o(pm_p,'pmsma_B12h'),mB12s=sumF_o(pm_p,'pmsma_B12s');
+
+  h+=`<div class="tbl-card"><div class="tbl-title"><span class="tag t-sup">OUTCOMES</span>Service Delivery Counts, HIV & Syphilis Outcomes</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px">
+    ${otbl_p('VHSND',[
+      ['B.1 PW attending (last 3 months)',vB1,'',''],
+      ['B.2 PW counselled for screening',vB2,'',''],
+      ['B.3 PW screened',vB3,'',''],
+      ['B.4 PW found HIV reactive',vB4,'',''],
+      ['↳ HIV Reactivity Rate','',ratio_o(vB4,vB3),true],
+      ['↳ Screening Rate','',ratio_o(vB3,vB1),true],
+    ])}
+    ${otbl_p('HWC',[
+      ['B.1 PW registered (last 6 months)',hB1,'',''],
+      ['B.2 PW screened (total)',hB2,'',''],
+      ['&nbsp;&nbsp;↳ ANC-1 (at registration)',hB21,'',''],
+      ['&nbsp;&nbsp;↳ ANC-2 (2nd trimester)',hB22,'',''],
+      ['&nbsp;&nbsp;↳ ANC-3 (3rd trimester)',hB23,'',''],
+      ['&nbsp;&nbsp;↳ ANC-4 (at delivery)',hB24,'',''],
+      ['B.3 PW found HIV reactive',hB3,'',''],
+      ['↳ HIV Reactivity Rate','',ratio_o(hB3,hB2),true],
+      ['↳ Screening Rate','',ratio_o(hB2,hB1),true],
+    ])}
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    ${otbl_p('PHC (CHC/PHC)',[
+      ['B.1 ANC registrations (last month)',pB1,'',''],
+      ['B.3 PW screened for HIV (last 6m)',pB3,'',''],
+      ['B.2 PW found HIV reactive',pB2,'',''],
+      ['B.4 PW found Syphilis reactive',pB4,'',''],
+      ['↳ HIV Reactivity Rate','',ratio_o(pB2,pB3),true],
+      ['↳ Syphilis Reactivity Rate','',ratio_o(pB4,pB3),true],
+      ['↳ Screening Rate','',ratio_o(pB3,pB1),true],
+    ])}
+    ${otbl_p('PMSMA (CHC/PHC)',[
+      ['BP1 PW attending (last 6 months)',mB1,'',''],
+      ['BP1.1 PW screened',mB11,'',''],
+      ['BP1.2 PW found HIV reactive',mB12h,'',''],
+      ['BP1.2 PW found Syphilis reactive',mB12s,'',''],
+      ['↳ HIV Reactivity Rate','',ratio_o(mB12h,mB11),true],
+      ['↳ Syphilis Reactivity Rate','',ratio_o(mB12s,mB11),true],
+      ['↳ Screening Rate','',ratio_o(mB11,mB1),true],
+    ])}
+  </div></div>`;
+
+  // ── CHARTS ──
+  h+=`<div class="chart-grid">
+    <div class="cc"><div class="cc-head">Compliance Summary by Category</div><div class="cc-sub">Average % Yes across key indicator groups</div>
+      <div class="cwrap" style="height:260px"><canvas id="cv-cp-cmp"></canvas></div></div>
+    <div class="cc"><div class="cc-head">Block-wise Facility Coverage</div><div class="cc-sub">Stacked by facility type</div>
+      <div class="cwrap" style="height:${Math.max(260,Object.keys(data.reduce((a,r)=>{a[r.block]=1;return a},{})).length*36+80)}px">
+      <canvas id="cv-cp-blk"></canvas></div></div>
+  </div>`;
+
+  document.getElementById('c-client').innerHTML = h;
+
+  // Compliance chart
+  const cgps=[['Supplies',['A1','A2_exp','A4','A8','A9']],['Equipment',['A6','A7','ACC1','ACC2','ACC3']],
+    ['Logistics',['ACC8','ACC9','ACC10','ACC11']],['Training',['D2','D3','D5','D6','D7']],
+    ['Clinical',['B11','B12','E4a','E5']],['Leadership',['D1','D6','E6','E7']]];
+  const cavgs=cgps.map(([_,cols])=>{
+    const v=cols.map(c=>yPct(data,c,null)).filter(x=>x!==null);
+    return v.length?Math.round(v.reduce((s,x)=>s+x,0)/v.length):0;
+  });
+  mkChart('cv-cp-cmp',{type:'bar',data:{labels:cgps.map(g=>g[0]),datasets:[{label:'Avg %',data:cavgs,
+    backgroundColor:cavgs.map(v=>v>=80?'rgba(128,189,65,.7)':v>=50?'rgba(255,194,14,.7)':'rgba(226,35,26,.7)'),
+    borderColor:cavgs.map(v=>v>=80?'#80BD41':v>=50?'#FFC20E':'#E2231A'),borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,max:100,ticks:{font:{size:10},callback:v=>v+'%'}},x:{ticks:{font:{size:11}}}}}});
+
+  const blks=[...new Set(data.map(r=>r.block))].sort();
+  const fkeys=['HWC','VHSND','PHC','PMSMA site'];
+  const fclrs=['#1CABE2','#80BD41','#374EA2','#FFC20E'];
+  mkChart('cv-cp-blk',{type:'bar',data:{labels:blks,datasets:fkeys.map((fk,i)=>({
+    label:fk==='PMSMA site'?'PMSMA':fk,
+    data:blks.map(b=>data.filter(r=>r.block===b&&r.facility===fk).length),
+    backgroundColor:fclrs[i]+'cc',borderColor:fclrs[i],borderWidth:1}))},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{labels:{font:{size:10}}}},
+      scales:{x:{beginAtZero:true,stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{font:{size:10}}}}}});
+}
+
+function renderClientCompliance(data){
+  const total=data.length;
+  const fc={HWC:0,VHSND:0,PHC:0,PMSMA:0};
+  data.forEach(r=>{
+    if(r.facility==='HWC') fc.HWC++;
+    else if(r.facility==='VHSND') fc.VHSND++;
+    else if(r.facility==='PHC') fc.PHC++;
+    else if(r.facility==='PMSMA site') fc.PMSMA++;
+  });
+  const pwScr_c    = data.reduce((s,r)=>s+(r.vhsnd_B3||0)+(r.hwc_B2||0)+(r.phc_B3||0)+(r.pmsma_B11||0),0);
+  const hivReact_c = data.reduce((s,r)=>s+(r.vhsnd_B4||0)+(r.hwc_B3||0)+(r.phc_B2||0)+(r.pmsma_B12h||0),0);
+  const syphReact_c= data.reduce((s,r)=>s+(r.phc_B4||0)+(r.pmsma_B12s||0),0);
+  const pct_c = (a,b) => b>0?(a/b*100).toFixed(1)+'%':'—';
+
+  let h = '';
+
+  // ── KPI ROW ──
+  h += `<div class="kpi-row">
+    <div class="kpi blue"><div class="kpi-lbl">Total Visits</div><div class="kpi-val">${total}</div></div>
+    <div class="kpi teal"><div class="kpi-lbl">HWC</div><div class="kpi-val">${fc.HWC}</div></div>
+    <div class="kpi amber"><div class="kpi-lbl">VHSND</div><div class="kpi-val">${fc.VHSND}</div></div>
+    <div class="kpi purple"><div class="kpi-lbl">PHC</div><div class="kpi-val">${fc.PHC}</div></div>
+    <div class="kpi green"><div class="kpi-lbl">PMSMA</div><div class="kpi-val">${fc.PMSMA}</div></div>
+    <div class="kpi red"><div class="kpi-lbl">PW Screened</div><div class="kpi-val">${pwScr_c.toLocaleString()}</div></div>
+    <div class="kpi navy"><div class="kpi-lbl">HIV Reactive</div><div class="kpi-val">${hivReact_c}</div><div class="kpi-sub">${pct_c(hivReact_c,pwScr_c)} of screened</div></div>
+    <div class="kpi navy"><div class="kpi-lbl">Syphilis Reactive</div><div class="kpi-val">${syphReact_c}</div><div class="kpi-sub">${pct_c(syphReact_c,pwScr_c)} of screened</div></div>
   </div>`;
 
   // ── 4 KEY SUPPLY INDICATORS SUMMARY ──
@@ -2131,10 +2376,10 @@ function renderClientCompliance(data){
   // ── CHARTS ──
   h+=`<div class="chart-grid">
     <div class="cc"><div class="cc-head">Compliance Summary by Category</div><div class="cc-sub">Average % Yes across key indicator groups</div>
-      <div class="cwrap" style="height:260px"><canvas id="cv-cl3-cmp"></canvas></div></div>
+      <div class="cwrap" style="height:260px"><canvas id="cv-db-cmp"></canvas></div></div>
     <div class="cc"><div class="cc-head">Block-wise Facility Coverage</div><div class="cc-sub">Stacked by facility type</div>
       <div class="cwrap" style="height:${Math.max(260,Object.keys(data.reduce((a,r)=>{a[r.block]=1;return a},{})).length*36+80)}px">
-      <canvas id="cv-cl3-blk"></canvas></div></div>
+      <canvas id="cv-db-blk"></canvas></div></div>
   </div>`;
 
   document.getElementById('c-client').innerHTML = h;
@@ -2149,16 +2394,10 @@ function renderClientCompliance(data){
   });
   mkChart('cv-cl3-cmp',{type:'bar',data:{labels:cgps.map(g=>g[0]),datasets:[{label:'Avg %',data:cavgs,
     backgroundColor:cavgs.map(v=>v>=80?'rgba(128,189,65,.7)':v>=50?'rgba(255,194,14,.7)':'rgba(226,35,26,.7)'),
-    borderColor:cavgs.map(v=>v>=80?'#80BD41':v>=50?'#FFC20E':'#E2231A'),borderWidth:2,
-    datalabels:{anchor:'end',align:'top',formatter:v=>v+'%',font:{size:11,weight:'bold'},
-      color:cavgs.map(v=>v>=80?'#3D6B15':v>=50?'#7A5C00':'#8B1A1A')}}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},
-        datalabels:{display:true,anchor:'end',align:'top',
-          formatter:(v)=>v+'%',font:{size:11,weight:'bold'},
-          color:(ctx)=>{const v=ctx.dataset.data[ctx.dataIndex];return v>=80?'#3D6B15':v>=50?'#7A5C00':'#8B1A1A';}}},
-      scales:{y:{beginAtZero:true,max:115,ticks:{font:{size:10},callback:v=>v<=100?v+'%':''}},x:{ticks:{font:{size:11}}}},
-      layout:{padding:{top:20}}}});
+    borderColor:cavgs.map(v=>v>=80?'#80BD41':v>=50?'#FFC20E':'#E2231A'),borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+        datalabels:{display:true,anchor:'end',align:'top',formatter:v=>v+'%',font:{size:11,weight:'bold'},color:(ctx)=>{const v=ctx.dataset.data[ctx.dataIndex];return v>=80?'#3D6B15':v>=50?'#7A5C00':'#8B1A1A';}}},
+      scales:{y:{beginAtZero:true,max:115,ticks:{font:{size:10},callback:v=>v<=100?v+'%':''}},x:{ticks:{font:{size:11}}}},layout:{padding:{top:20}}}});
 
   const blks=[...new Set(data.map(r=>r.block))].sort();
   const fkeys=['HWC','VHSND','PHC','PMSMA site'];
@@ -2170,11 +2409,6 @@ function renderClientCompliance(data){
     options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
       plugins:{legend:{labels:{font:{size:10}}}},
       scales:{x:{beginAtZero:true,stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{font:{size:10}}}}}});
-}
-
-function renderClientProgDash(data) {
-  // Tab 2 — existing client programme dashboard (KPIs, cold chain, key supplies, spider, outcomes)
-  renderClientDash(data);
 }
 
 function initClientView() {
