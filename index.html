@@ -986,7 +986,16 @@ async function fetchData() {
       FACILITY_MAP_TOTAL = facMapRecs.length;
       FACILITY_MAP_BY_DISTRICT = { Nagaon:0, Hojai:0 };
       facMapRecs.forEach(r => {
-        const dist = String(r['district'] || r['grp_details/district'] || r['District'] || '').toLowerCase();
+        // KoboToolbox exports "Facility Details /District" in several possible key formats
+        const keys = Object.keys(r);
+        const distKey = keys.find(k => {
+          const n = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return n === 'facilitydetailsdistrict'
+              || n === 'facilitydetailsdistrict'
+              || n.endsWith('district')
+              || n === 'district';
+        });
+        const dist = String(distKey ? r[distKey] : '').toLowerCase().trim();
         if (dist.includes('nagaon'))     FACILITY_MAP_BY_DISTRICT.Nagaon++;
         else if (dist.includes('hojai')) FACILITY_MAP_BY_DISTRICT.Hojai++;
       });
