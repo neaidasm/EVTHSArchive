@@ -715,7 +715,8 @@ async function doLogin() {
 
 const PAGE_SIZE   = 3000;
 
-const TARGETS = { hwc:78, vhsnd:72, phc_pmsma:78, meetings:78, mos:132 };
+const TARGETS = { hwc:78, vhsnd:72, phc_pmsma:78, meetings:78, mos:132, facility_map:333 };
+const FACILITY_MAP_TARGETS = { Nagaon:264, Hojai:69 };
 const COORD_TARGETS = {
   hwc:[16,32,10,14,6], vhsnd:[14,28,8,12,10],
   phc_pmsma:[16,32,10,14,6], meetings:[16,16,16,16,14], mos:[26,28,24,28,26]
@@ -909,6 +910,8 @@ let MO_TOTAL          = 0;   // sum of MOs trained from mo_trained.json
 let MEETINGS_RAW      = [];  // raw block meeting records for filtering
 let MEETINGS_TOTAL    = 0;   // unfiltered total (used as fallback)
 let MEETINGS_BY_COORD = [0,0,0,0,0]; // unfiltered per-coordinator counts
+let FACILITY_MAP_TOTAL = 0;          // total EVTHS Facility Mapping submissions
+let FACILITY_MAP_BY_DISTRICT = { Nagaon:0, Hojai:0 }; // district breakdown
 let dataSource = 'seed'; // 'seed' | 'live'
 
 /* GitHub config removed — workflow handles all data fetching */
@@ -934,11 +937,12 @@ async function fetchData() {
   dot.className = 'status-dot loading';
 
   try {
-    // Fetch all 3 forms in parallel
-    const [mainResp, moResp, meetResp] = await Promise.all([
-      fetch('./data/kobo_latest.json?ts='   + Date.now()),
-      fetch('./data/mo_trained.json?ts='    + Date.now()),
-      fetch('./data/block_meetings.json?ts='+ Date.now()),
+    // Fetch all 4 forms in parallel
+    const [mainResp, moResp, meetResp, facMapResp] = await Promise.all([
+      fetch('./data/kobo_latest.json?ts='          + Date.now()),
+      fetch('./data/mo_trained.json?ts='           + Date.now()),
+      fetch('./data/block_meetings.json?ts='       + Date.now()),
+      fetch('./data/evths_facility_mapping.json?ts='+ Date.now()),
     ]);
 
     if (!mainResp.ok) throw new Error('Main data: HTTP ' + mainResp.status);
@@ -973,6 +977,19 @@ async function fetchData() {
       MEETINGS_BY_COORD = COORDS.map(c =>
         meetRecs.filter(r => normCoordName(r['block_coordinator']) === c).length
       );
+    }
+
+    // EVTHS Facility Mapping — count total records and by district
+    if (facMapResp && facMapResp.ok) {
+      const facMapJson = await facMapResp.json();
+      const facMapRecs = facMapJson.results || [];
+      FACILITY_MAP_TOTAL = facMapRecs.length;
+      FACILITY_MAP_BY_DISTRICT = { Nagaon:0, Hojai:0 };
+      facMapRecs.forEach(r => {
+        const dist = String(r['district'] || r['grp_details/district'] || r['District'] || '').toLowerCase();
+        if (dist.includes('nagaon'))     FACILITY_MAP_BY_DISTRICT.Nagaon++;
+        else if (dist.includes('hojai')) FACILITY_MAP_BY_DISTRICT.Hojai++;
+      });
     }
 
     const now = new Date();
@@ -1157,11 +1174,11 @@ function renderTVA(data){
     meetFiltered.filter(r => normCoordName(r['block_coordinator']) === c).length
   );
 
-  const achs  = [hwc, vhsnd, phcp, meetCount, MO_TOTAL];
-  const tgts  = [TARGETS.hwc, TARGETS.vhsnd, TARGETS.phc_pmsma, TARGETS.meetings, TARGETS.mos];
-  const lbls  = ['HWC Monitored','VHSND Monitored','PHC/PMSMA Monitored','Block Meetings','MOs Trained'];
-  const clrs  = ['#1CABE2','#80BD41','#374EA2','#FFC20E','#E2231A'];
-  const accs  = ['blue','green','purple','amber','red'];
+  const achs  = [hwc, vhsnd, phcp, meetCount, MO_TOTAL, FACILITY_MAP_TOTAL];
+  const tgts  = [TARGETS.hwc, TARGETS.vhsnd, TARGETS.phc_pmsma, TARGETS.meetings, TARGETS.mos, TARGETS.facility_map];
+  const lbls  = ['HWC Monitored','VHSND Monitored','PHC/PMSMA Monitored','Block Meetings','MOs Trained','Facility Mapping'];
+  const clrs  = ['#1CABE2','#80BD41','#374EA2','#FFC20E','#E2231A','#00B4D8'];
+  const accs  = ['blue','green','purple','amber','red','teal'];
 
   const coordData = COORDS.map(c=>({
     name: c.split(' ')[0],
@@ -1211,6 +1228,18 @@ function renderTVA(data){
       });
       h+='</div>';
     }
+    // District breakdown for Facility Mapping (indicator 6)
+    if(i===5){
+      h+=`<div class="coord-strip" style="grid-template-columns:repeat(2,1fr);max-width:280px;margin-top:10px">`;
+      [['Nagaon','#1CABE2'],['Hojai','#374EA2']].forEach(([dist,clr])=>{
+        h+=`<div class="coord-cell">
+          <div class="coord-name">${dist}</div>
+          <div class="coord-val" style="color:${clr}">${FACILITY_MAP_BY_DISTRICT[dist]}</div>
+          <div class="coord-tgt">of ${FACILITY_MAP_TARGETS[dist]}</div>
+        </div>`;
+      });
+      h+='</div>';
+    }
     h+='</div>';
   });
   h+='</div>';
@@ -1218,7 +1247,7 @@ function renderTVA(data){
   h+=`<div class="chart-grid">
     <div class="cc">
       <div class="cc-head">Target vs Achievement</div>
-      <div class="cc-sub">All 5 programme indicators — filtered view</div>
+      <div class="cc-sub">All 6 programme indicators — filtered view</div>
       <div class="cwrap" style="height:260px"><canvas id="cv-tva-bar" role="img" aria-label="Target vs Achievement clustered bar chart"></canvas></div>
     </div>
     <div class="cc">
@@ -1232,7 +1261,7 @@ function renderTVA(data){
   document.getElementById('c-tva').innerHTML = h;
 
   mkChart('cv-tva-bar',{type:'bar',data:{
-    labels:['HWC','VHSND','PHC/PMSMA','Meetings','MOs'],
+    labels:['HWC','VHSND','PHC/PMSMA','Meetings','MOs','Fac. Mapping'],
     datasets:[
       {label:'Target',data:tgts,backgroundColor:'rgba(31,124,213,.12)',borderColor:'#1f7cd5',borderWidth:2},
       {label:'Achievement',data:achs,backgroundColor:clrs.map(c=>c+'cc'),borderColor:clrs,borderWidth:2}
@@ -1658,11 +1687,11 @@ function renderClientDash(data) {
   const vhsnd = data.filter(r=>r.facility==='VHSND').length;
   const phcp  = data.filter(r=>r.facility==='PHC'||r.facility==='PMSMA site').length;
   const meetCount = MEETINGS_TOTAL; // unfiltered total for client view
-  const achs  = [hwc, vhsnd, phcp, meetCount, MO_TOTAL];
-  const tgts  = [TARGETS.hwc, TARGETS.vhsnd, TARGETS.phc_pmsma, TARGETS.meetings, TARGETS.mos];
-  const lbls  = ['HWC Monitored','VHSND Monitored','PHC/PMSMA Monitored','Block Meetings','MOs Trained'];
-  const clrs  = ['#1CABE2','#80BD41','#374EA2','#FFC20E','#E2231A'];
-  const accs  = ['blue','green','purple','amber','red'];
+  const achs  = [hwc, vhsnd, phcp, meetCount, MO_TOTAL, FACILITY_MAP_TOTAL];
+  const tgts  = [TARGETS.hwc, TARGETS.vhsnd, TARGETS.phc_pmsma, TARGETS.meetings, TARGETS.mos, TARGETS.facility_map];
+  const lbls  = ['HWC Monitored','VHSND Monitored','PHC/PMSMA Monitored','Block Meetings','MOs Trained','Facility Mapping'];
+  const clrs  = ['#1CABE2','#80BD41','#374EA2','#FFC20E','#E2231A','#00B4D8'];
+  const accs  = ['blue','green','purple','amber','red','teal'];
 
   let h = '';
 
@@ -1692,8 +1721,20 @@ function renderClientDash(data) {
       </div>
       <div class="prog-track">
         <div class="prog-fill" style="width:${w}%;background:${clrs[i]}"><span>${p}%</span></div>
-      </div>
-    </div>`;
+      </div>`;
+    // District breakdown for Facility Mapping (indicator 6)
+    if(i===5){
+      h+=`<div class="coord-strip" style="grid-template-columns:repeat(2,1fr);max-width:280px;margin-top:10px">`;
+      [['Nagaon','#1CABE2'],['Hojai','#374EA2']].forEach(([dist,clr])=>{
+        h+=`<div class="coord-cell">
+          <div class="coord-name">${dist}</div>
+          <div class="coord-val" style="color:${clr}">${FACILITY_MAP_BY_DISTRICT[dist]}</div>
+          <div class="coord-tgt">of ${FACILITY_MAP_TARGETS[dist]}</div>
+        </div>`;
+      });
+      h+='</div>';
+    }
+    h+='</div>';
   });
   h += '</div>';
 
@@ -1701,7 +1742,7 @@ function renderClientDash(data) {
   h += `<div class="chart-grid">
     <div class="cc">
       <div class="cc-head">Target vs Achievement</div>
-      <div class="cc-sub">All 5 programme indicators</div>
+      <div class="cc-sub">All 6 programme indicators</div>
       <div class="cwrap" style="height:260px"><canvas id="cv-cl-tva-bar"></canvas></div>
     </div>
     <div class="cc">
@@ -1874,7 +1915,7 @@ function renderClientDash(data) {
 
   // ── Clustered Bar: Target vs Achievement ──
   mkChart('cv-cl-tva-bar',{type:'bar',data:{
-    labels:['HWC','VHSND','PHC/PMSMA','Meetings','MOs'],
+    labels:['HWC','VHSND','PHC/PMSMA','Meetings','MOs','Fac. Mapping'],
     datasets:[
       {label:'Target',    data:tgts, backgroundColor:'rgba(0,88,171,.12)', borderColor:'#0058AB', borderWidth:2},
       {label:'Achievement', data:achs, backgroundColor:clrs.map(c=>c+'cc'), borderColor:clrs, borderWidth:2}
