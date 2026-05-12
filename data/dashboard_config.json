@@ -1,0 +1,72 @@
+{
+  "_comment": "EVTHS Dashboard Visibility Config — edit this file to show/hide indicators without touching index.html",
+
+  "hidden_kpis": [
+    "hiv_reactive"
+  ],
+
+  "hidden_training_rows": [
+    "D4"
+  ],
+
+  "hidden_clinical_rows": [
+    "E1"
+  ],
+
+  "hidden_outcome_rows": [
+    "hwc_hiv"
+  ],
+
+  "field_overrides": {
+    "hwc_B3": 0
+  },
+
+  "_reference": {
+    "_hidden_kpis_options": {
+      "hiv_reactive":    "HIV Reactive summary KPI card",
+      "syphilis_reactive": "Syphilis Reactive summary KPI card"
+    },
+    "_hidden_training_rows_options": {
+      "D1":  "MO aware of EVTHS guidelines",
+      "D1b": "MO aware of HIV/Syphilis-exposed infant care",
+      "D2":  "CHO trained on rapid dual RDT",
+      "D3":  "ANM/MPW/Staff Nurse trained on dual RDT",
+      "D3b": "Staff Nurse/ANM trained on HEI feeding",
+      "D4":  "Lab Technician trained on dual RDT",
+      "D5":  "Needle-stick injury / PEP awareness",
+      "D6":  "Referral pathways clearly understood",
+      "D7":  "ANM/ASHA involved in ANC tracking"
+    },
+    "_hidden_clinical_rows_options": {
+      "B11": "MCP card updated with dual test results",
+      "B12": "BMW segregated as per guidelines",
+      "B8s": "Screening before delivery (unknown-status PW)",
+      "B9":  "Confidentiality maintained (PHC)",
+      "B10": "Follow-up of HIV-positive cases (PHC)",
+      "BP6": "Confidentiality maintained (PMSMA)",
+      "BP7": "Follow-up of HIV-positive cases (PMSMA)",
+      "BP8": "MCP card updated (PMSMA)",
+      "C1":  "HIV & Syphilis test kits in labour room",
+      "C2":  "PW with unknown status tested",
+      "C5":  "Safe delivery kits available",
+      "E1":  "Benzathine Penicillin after reactive",
+      "E4a": "Testing recorded in RCH register",
+      "E4b": "Index/partner testing conducted",
+      "E5":  "Clear referral linkage with ART Centre",
+      "E6":  "Community awareness on VT/ARV/infant feeding",
+      "E7":  "World AIDS Day / related events observed"
+    },
+    "_hidden_outcome_rows_options": {
+      "vhsnd_hiv": "VHSND — PW found HIV reactive row",
+      "hwc_hiv":   "HWC — PW found HIV reactive row",
+      "phc_hiv":   "PHC — PW found HIV reactive row",
+      "pmsma_hiv": "PMSMA — PW found HIV reactive row"
+    },
+    "_field_overrides_options": {
+      "hwc_B3":     "HWC PW found HIV reactive count (set to 0 to suppress)",
+      "vhsnd_B4":   "VHSND PW found HIV reactive count",
+      "phc_B2":     "PHC PW found HIV reactive count",
+      "pmsma_B12h": "PMSMA PW found HIV reactive count"
+    }
+  }
+}
