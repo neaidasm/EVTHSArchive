@@ -475,6 +475,76 @@ tr:hover td{background:#F0F8FF}
     </div>
   </div>
 </div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ADMIN CONFIG PAGE — only visible to admin users
+═══════════════════════════════════════════════════════════ -->
+<div id="page-config" class="page" style="display:none">
+  <div class="cfg-header">
+    <div>
+      <h2>Dashboard Configuration</h2>
+      <p>Toggle which indicators are visible on the dashboard. Changes take effect within 5 minutes.</p>
+    </div>
+  </div>
+
+  <div class="cfg-grid">
+    <!-- KPI Cards -->
+    <div class="cfg-card">
+      <div class="cfg-card-head">
+        <div class="ci" style="background:#eff8ff">📊</div>
+        <div><h3>KPI Cards <span class="cfg-section-count" id="cfg-kpi-count"></span></h3><p>Summary cards at the top of the dashboard</p></div>
+      </div>
+      <div class="cfg-card-body" id="cfg-kpi-list"></div>
+    </div>
+
+    <!-- Outcome Rows -->
+    <div class="cfg-card">
+      <div class="cfg-card-head">
+        <div class="ci" style="background:#fff7ed">🏥</div>
+        <div><h3>Outcome Rows <span class="cfg-section-count" id="cfg-outcome-count"></span></h3><p>HIV Reactive rows in facility outcome tables</p></div>
+      </div>
+      <div class="cfg-card-body" id="cfg-outcome-list"></div>
+    </div>
+
+    <!-- Training Table -->
+    <div class="cfg-card">
+      <div class="cfg-card-head">
+        <div class="ci" style="background:#f0fdf4">📋</div>
+        <div><h3>Training Rows <span class="cfg-section-count" id="cfg-train-count"></span></h3><p>Training &amp; Capacity Building table</p></div>
+      </div>
+      <div class="cfg-card-body" id="cfg-train-list"></div>
+    </div>
+
+    <!-- Clinical Table -->
+    <div class="cfg-card">
+      <div class="cfg-card-head">
+        <div class="ci" style="background:#fdf4ff">💊</div>
+        <div><h3>Clinical Rows <span class="cfg-section-count" id="cfg-clin-count"></span></h3><p>Clinical Practice &amp; Follow-up table</p></div>
+      </div>
+      <div class="cfg-card-body" id="cfg-clin-list"></div>
+    </div>
+
+    <!-- Field Overrides — full width -->
+    <div class="cfg-card" style="grid-column:1/-1">
+      <div class="cfg-card-head">
+        <div class="ci" style="background:#f5f3ff">🔢</div>
+        <div><h3>Field Value Overrides</h3><p>Force a specific count to show a fixed number instead of live data. Tick "Override" and set value to 0 to suppress a count.</p></div>
+      </div>
+      <div class="cfg-card-body" id="cfg-override-list"
+           style="display:grid;grid-template-columns:1fr 1fr;gap:7px"></div>
+    </div>
+  </div>
+
+  <!-- Save Bar -->
+  <div class="cfg-save-bar">
+    <button class="cfg-save-btn" id="cfgSaveBtn" onclick="saveAdminConfig()">
+      <svg id="cfgSaveIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Save Changes to Dashboard
+    </button>
+    <span class="cfg-saved-msg" id="cfgSavedMsg"></span>
+  </div>
+</div>
+
 </div><!-- /internal-shell -->
 
 <!-- ═══ CLIENT SHELL (external users only) ═══ -->
@@ -555,6 +625,12 @@ function showDashboard(userType) {
     initClientView();
   } else {
     initInternalView();
+    // Show Config tab only for admin users
+    if (role === 'admin') {
+      const cfgTab = document.getElementById('adminConfigTab');
+      if (cfgTab) cfgTab.style.display = 'inline-flex';
+      loadAdminConfig(); // pre-load current config
+    }
   }
 }
 
@@ -576,34 +652,32 @@ async function doLogin() {
   }
 
   const btn = document.getElementById('loginBtn');
-  btn.disabled = true;
+  btn.disabled    = true;
   btn.textContent = 'Verifying…';
   document.getElementById('loginError').style.display = 'none';
 
   try {
-    const resp = await fetch(USERS_JSON_URL + '?ts=' + Date.now());
-    if (!resp.ok) throw new Error('Could not load user list. Please try again.');
-
-    const json    = await resp.json();
-    const users   = json.results || [];
-
-    const matched = users.find(u => {
-      const uname = getField(u, ['User Name','user_name','username','UserName']);
-      const upass = getField(u, ['Password','password','pass']);
-      return uname.toLowerCase() === username.toLowerCase() && upass === password;
+    // ── Secure login: credentials validated server-side ──────
+    const resp = await fetch('/api/login', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username, password })
     });
 
-    if (matched) {
-      const displayName = getField(matched, ['User Display Name','user_display_name','name','full_name']) || username;
-      const userType    = getField(matched, ['User_Type','user_type','User Type','role']).toLowerCase() || 'internal';
-      saveSession(displayName, userType);
-      showDashboard(userType);
+    const result = await resp.json();
+
+    if (result.success) {
+      saveSession(result.displayName, result.userType);
+      showDashboard(result.userType);
     } else {
-      showLoginError('Invalid username or password. Please try again.');
+      showLoginError(result.message || 'Invalid username or password. Please try again.');
     }
   } catch(err) {
-    showLoginError(err.message || 'Login failed. Please try again.');
+    showLoginError('Login failed. Please check your connection and try again.');
     console.error('[Login]', err);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Sign In';
   }
 }
 
@@ -652,6 +726,10 @@ async function doLogin() {
   <div class="tab active" data-page="tva" onclick="showPage('tva',this)">Target vs Achievement</div>
   <div class="tab" data-page="info" onclick="showPage('info',this)">Infographics</div>
   <div class="tab" data-page="dash" onclick="showPage('dash',this)">Programme Dashboard</div>
+  <div class="tab" data-page="config" id="adminConfigTab" onclick="showPage('config',this)" style="display:none;align-items:center;gap:6px">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Dashboard Config
+  </div>
 </div>
 
 <!-- ═══ INTERNAL SHELL (team members only) ═══ -->
@@ -1733,6 +1811,7 @@ function showPage(id, tab){
 }
 
 function render(){
+  if (currentPage === 'config') return; // config panel handles itself
   const data = getData();
   document.getElementById('recCount').textContent = data.length;
   document.getElementById('recTotal').textContent = ALL_DATA.length;
@@ -2663,6 +2742,207 @@ function signOut() {
   }
   location.reload();
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN CONFIG PANEL — JavaScript
+═══════════════════════════════════════════════════════════ */
+const CFG_KPI_DEFS = [
+  {key:'hiv_reactive',     label:'HIV Reactive',      tag:'KPI'},
+  {key:'syphilis_reactive',label:'Syphilis Reactive',  tag:'KPI'},
+];
+const CFG_TRAIN_DEFS = [
+  {key:'D1', label:'MO aware of EVTHS guidelines',                 scope:'PHC & PMSMA'},
+  {key:'D1b',label:'MO aware of HIV/Syphilis-exposed infant care', scope:'PMSMA only'},
+  {key:'D2', label:'CHO trained on rapid dual RDT',                scope:'HWC & VHSND'},
+  {key:'D3', label:'ANM/MPW/Staff Nurse trained on dual RDT',      scope:'All'},
+  {key:'D3b',label:'Staff Nurse/ANM trained on HEI feeding',       scope:'PMSMA only'},
+  {key:'D4', label:'Lab Technician trained on dual RDT',           scope:'HWC & PHC'},
+  {key:'D5', label:'Needle-stick injury / PEP awareness',          scope:'All'},
+  {key:'D6', label:'Referral pathways clearly understood',         scope:'All'},
+  {key:'D7', label:'ANM/ASHA involved in ANC tracking',            scope:'HWC & VHSND'},
+];
+const CFG_CLIN_DEFS = [
+  {key:'B11',label:'MCP card updated with dual test results',      scope:'All'},
+  {key:'B12',label:'BMW segregated as per guidelines',             scope:'All'},
+  {key:'B8s',label:'Screening before delivery (unknown-status PW)',scope:'PHC only'},
+  {key:'B9', label:'Confidentiality maintained',                   scope:'PHC only'},
+  {key:'B10',label:'Follow-up of HIV-positive cases',              scope:'PHC only'},
+  {key:'BP6',label:'Confidentiality maintained (PMSMA)',           scope:'PMSMA only'},
+  {key:'BP7',label:'Follow-up of HIV-positive cases (PMSMA)',      scope:'PMSMA only'},
+  {key:'BP8',label:'MCP card updated (PMSMA)',                     scope:'PMSMA only'},
+  {key:'C1', label:'HIV & Syphilis test kits in labour room',      scope:'PHC & PMSMA'},
+  {key:'C2', label:'PW with unknown status tested',                scope:'PHC & PMSMA'},
+  {key:'C5', label:'Safe delivery kits available',                 scope:'PHC & PMSMA'},
+  {key:'E1', label:'Benzathine Penicillin after reactive',         scope:'PHC & PMSMA'},
+  {key:'E4a',label:'Testing recorded in RCH register',             scope:'All'},
+  {key:'E4b',label:'Index/partner testing conducted',              scope:'All'},
+  {key:'E5', label:'Clear referral linkage with ART Centre',       scope:'All'},
+  {key:'E6', label:'Community awareness on VT/ARV/infant feeding', scope:'All'},
+  {key:'E7', label:'World AIDS Day / related events observed',     scope:'All'},
+];
+const CFG_OUTCOME_DEFS = [
+  {key:'vhsnd_hiv',label:'VHSND — PW found HIV reactive',scope:'VHSND'},
+  {key:'hwc_hiv',  label:'HWC — PW found HIV reactive',  scope:'HWC'},
+  {key:'phc_hiv',  label:'PHC — PW found HIV reactive',  scope:'PHC'},
+  {key:'pmsma_hiv',label:'PMSMA — PW found HIV reactive',scope:'PMSMA'},
+];
+const CFG_OVERRIDE_DEFS = [
+  {key:'hwc_B3',    label:'HWC HIV reactive count',   scope:'HWC'},
+  {key:'vhsnd_B4',  label:'VHSND HIV reactive count', scope:'VHSND'},
+  {key:'phc_B2',    label:'PHC HIV reactive count',   scope:'PHC'},
+  {key:'pmsma_B12h',label:'PMSMA HIV reactive count', scope:'PMSMA'},
+];
+
+let ADMIN_CFG = {hidden_kpis:[],hidden_training_rows:[],hidden_clinical_rows:[],hidden_outcome_rows:[],field_overrides:{}};
+
+async function loadAdminConfig() {
+  try {
+    const r = await fetch('./data/dashboard_config.json?ts=' + Date.now());
+    if (r.ok) {
+      const cfg = await r.json();
+      ADMIN_CFG = Object.assign({hidden_kpis:[],hidden_training_rows:[],hidden_clinical_rows:[],hidden_outcome_rows:[],field_overrides:{}}, cfg);
+    }
+  } catch(e) { console.warn('[AdminConfig] Could not load config', e); }
+  buildCfgUI();
+}
+
+function buildCfgUI() {
+  buildCfgToggles('cfg-kpi-list',    CFG_KPI_DEFS,     ADMIN_CFG.hidden_kpis,          'hidden_kpis',          'cfg-kpi-count');
+  buildCfgToggles('cfg-train-list',  CFG_TRAIN_DEFS,   ADMIN_CFG.hidden_training_rows, 'hidden_training_rows', 'cfg-train-count');
+  buildCfgToggles('cfg-clin-list',   CFG_CLIN_DEFS,    ADMIN_CFG.hidden_clinical_rows, 'hidden_clinical_rows', 'cfg-clin-count');
+  buildCfgToggles('cfg-outcome-list',CFG_OUTCOME_DEFS, ADMIN_CFG.hidden_outcome_rows,  'hidden_outcome_rows',  'cfg-outcome-count');
+  buildCfgOverrides();
+}
+
+function buildCfgToggles(cid, defs, hiddenList, stateKey, countId) {
+  const el = document.getElementById(cid);
+  if (!el) return;
+  el.innerHTML = '';
+  defs.forEach(d => {
+    const isHidden = hiddenList.includes(d.key);
+    const row = document.createElement('div');
+    row.className = 'cfg-row' + (isHidden ? ' is-hidden' : '');
+    row.id = 'cfg-row-' + d.key;
+    row.innerHTML = `
+      <span class="cfg-tag">${d.tag || d.key}</span>
+      <span class="cfg-lbl">${d.label}</span>
+      ${d.scope ? `<span class="cfg-scope">${d.scope}</span>` : ''}
+      <label class="cfg-ts">
+        <input type="checkbox" ${!isHidden ? 'checked' : ''} onchange="cfgToggle('${stateKey}','${d.key}',this.checked)"/>
+        <span class="ck"></span>
+      </label>`;
+    el.appendChild(row);
+  });
+  updateCfgCount(countId, defs, hiddenList);
+}
+
+function buildCfgOverrides() {
+  const el = document.getElementById('cfg-override-list');
+  if (!el) return;
+  el.innerHTML = '';
+  CFG_OVERRIDE_DEFS.forEach(d => {
+    const hasOv = d.key in ADMIN_CFG.field_overrides;
+    const val   = hasOv ? ADMIN_CFG.field_overrides[d.key] : 0;
+    const row   = document.createElement('div');
+    row.className = 'cfg-ov-row';
+    row.innerHTML = `
+      <span class="cfg-tag" style="background:${hasOv?'#7c3aed':'#1a2744'}">${d.key}</span>
+      <span class="cfg-lbl">${d.label} <span style="font-size:10px;color:#6b7a99">(${d.scope})</span></span>
+      <div class="cfg-ov-cb">
+        <input type="checkbox" id="cov-${d.key}" ${hasOv?'checked':''} onchange="cfgToggleOverride('${d.key}',this.checked)"/>
+        <label for="cov-${d.key}">Override</label>
+      </div>
+      <input type="number" id="cov-val-${d.key}" value="${val}" min="0" ${!hasOv?'disabled':''} style="opacity:${hasOv?1:.4}" onchange="cfgSetOvVal('${d.key}',this.value)"/>`;
+    el.appendChild(row);
+  });
+}
+
+function cfgToggle(stateKey, key, visible) {
+  if (!visible) { if (!ADMIN_CFG[stateKey].includes(key)) ADMIN_CFG[stateKey].push(key); }
+  else { ADMIN_CFG[stateKey] = ADMIN_CFG[stateKey].filter(k => k !== key); }
+  const row = document.getElementById('cfg-row-' + key);
+  if (row) row.className = 'cfg-row' + (visible ? '' : ' is-hidden');
+  // Rebuild counts
+  const map = {
+    hidden_kpis:['cfg-kpi-count',CFG_KPI_DEFS],
+    hidden_training_rows:['cfg-train-count',CFG_TRAIN_DEFS],
+    hidden_clinical_rows:['cfg-clin-count',CFG_CLIN_DEFS],
+    hidden_outcome_rows:['cfg-outcome-count',CFG_OUTCOME_DEFS],
+  };
+  if (map[stateKey]) updateCfgCount(map[stateKey][0], map[stateKey][1], ADMIN_CFG[stateKey]);
+  cfgMarkUnsaved();
+}
+
+function cfgToggleOverride(key, enabled) {
+  const inp = document.getElementById('cov-val-' + key);
+  const tag = document.getElementById('cov-' + key).closest('.cfg-ov-row').querySelector('.cfg-tag');
+  if (enabled) {
+    ADMIN_CFG.field_overrides[key] = Number(inp.value || 0);
+    inp.disabled = false; inp.style.opacity = '1';
+    tag.style.background = '#7c3aed';
+  } else {
+    delete ADMIN_CFG.field_overrides[key];
+    inp.disabled = true; inp.style.opacity = '.4';
+    tag.style.background = '#1a2744';
+  }
+  cfgMarkUnsaved();
+}
+
+function cfgSetOvVal(key, val) {
+  if (key in ADMIN_CFG.field_overrides) { ADMIN_CFG.field_overrides[key] = Number(val); cfgMarkUnsaved(); }
+}
+
+function updateCfgCount(countId, defs, hiddenList) {
+  const el = document.getElementById(countId);
+  if (el) el.textContent = `${defs.length - hiddenList.length}/${defs.length} visible`;
+}
+
+function cfgMarkUnsaved() {
+  document.getElementById('cfgSavedMsg').textContent = 'Unsaved changes ●';
+  document.getElementById('cfgSaveBtn').className = 'cfg-save-btn';
+}
+
+async function saveAdminConfig() {
+  const btn = document.getElementById('cfgSaveBtn');
+  const msg = document.getElementById('cfgSavedMsg');
+  btn.className = 'cfg-save-btn saving';
+  btn.querySelector('svg').innerHTML = '<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>';
+  btn.disabled = true;
+  msg.textContent = 'Saving…';
+
+  const cleanCfg = {
+    hidden_kpis:          [...ADMIN_CFG.hidden_kpis],
+    hidden_training_rows: [...ADMIN_CFG.hidden_training_rows],
+    hidden_clinical_rows: [...ADMIN_CFG.hidden_clinical_rows],
+    hidden_outcome_rows:  [...ADMIN_CFG.hidden_outcome_rows],
+    field_overrides:      {...ADMIN_CFG.field_overrides},
+  };
+
+  try {
+    const r = await fetch('/api/save-config', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ config: cleanCfg })
+    });
+    const result = await r.json();
+    if (result.success) {
+      btn.className = 'cfg-save-btn saved';
+      btn.querySelector('svg').innerHTML = '<polyline points="20 6 9 17 4 12"/>';
+      msg.textContent = 'Saved ✓ — dashboard updates in ~5 min';
+      setTimeout(() => { btn.className = 'cfg-save-btn'; msg.textContent = ''; }, 5000);
+    } else {
+      btn.className = 'cfg-save-btn';
+      msg.textContent = '✕ Save failed: ' + (result.error || 'Unknown error');
+    }
+  } catch(e) {
+    btn.className = 'cfg-save-btn';
+    msg.textContent = '✕ Network error — try again';
+  } finally {
+    btn.disabled = false;
+    btn.querySelector('svg').innerHTML = '<polyline points="20 6 9 17 4 12"/>';
+  }
+}
+
 </script>
 
 </body></html>
