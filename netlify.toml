@@ -1,0 +1,21 @@
+[build]
+  functions = "netlify/functions"
+
+# ── Block direct public access to users.json ──────────────────
+# The login function reads it server-side; no one else can fetch it
+[[redirects]]
+  from  = "/data/users.json"
+  to    = "/404.html"
+  status = 404
+  force  = true
+
+# ── Clean API routes → Netlify Functions ──────────────────────
+[[redirects]]
+  from  = "/api/login"
+  to    = "/.netlify/functions/login"
+  status = 200
+
+[[redirects]]
+  from  = "/api/save-config"
+  to    = "/.netlify/functions/save-config"
+  status = 200
