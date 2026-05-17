@@ -476,76 +476,7 @@ tr:hover td{background:#F0F8FF}
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════
-     ADMIN CONFIG PAGE — only visible to admin users
-═══════════════════════════════════════════════════════════ -->
-<div id="page-config" class="page" style="display:none">
-  <div class="cfg-header">
-    <div>
-      <h2>Dashboard Configuration</h2>
-      <p>Toggle which indicators are visible on the dashboard. Changes take effect within 5 minutes.</p>
-    </div>
-  </div>
 
-  <div class="cfg-grid">
-    <!-- KPI Cards -->
-    <div class="cfg-card">
-      <div class="cfg-card-head">
-        <div class="ci" style="background:#eff8ff">📊</div>
-        <div><h3>KPI Cards <span class="cfg-section-count" id="cfg-kpi-count"></span></h3><p>Summary cards at the top of the dashboard</p></div>
-      </div>
-      <div class="cfg-card-body" id="cfg-kpi-list"></div>
-    </div>
-
-    <!-- Outcome Rows -->
-    <div class="cfg-card">
-      <div class="cfg-card-head">
-        <div class="ci" style="background:#fff7ed">🏥</div>
-        <div><h3>Outcome Rows <span class="cfg-section-count" id="cfg-outcome-count"></span></h3><p>HIV Reactive rows in facility outcome tables</p></div>
-      </div>
-      <div class="cfg-card-body" id="cfg-outcome-list"></div>
-    </div>
-
-    <!-- Training Table -->
-    <div class="cfg-card">
-      <div class="cfg-card-head">
-        <div class="ci" style="background:#f0fdf4">📋</div>
-        <div><h3>Training Rows <span class="cfg-section-count" id="cfg-train-count"></span></h3><p>Training &amp; Capacity Building table</p></div>
-      </div>
-      <div class="cfg-card-body" id="cfg-train-list"></div>
-    </div>
-
-    <!-- Clinical Table -->
-    <div class="cfg-card">
-      <div class="cfg-card-head">
-        <div class="ci" style="background:#fdf4ff">💊</div>
-        <div><h3>Clinical Rows <span class="cfg-section-count" id="cfg-clin-count"></span></h3><p>Clinical Practice &amp; Follow-up table</p></div>
-      </div>
-      <div class="cfg-card-body" id="cfg-clin-list"></div>
-    </div>
-
-    <!-- Field Overrides — full width -->
-    <div class="cfg-card" style="grid-column:1/-1">
-      <div class="cfg-card-head">
-        <div class="ci" style="background:#f5f3ff">🔢</div>
-        <div><h3>Field Value Overrides</h3><p>Force a specific count to show a fixed number instead of live data. Tick "Override" and set value to 0 to suppress a count.</p></div>
-      </div>
-      <div class="cfg-card-body" id="cfg-override-list"
-           style="display:grid;grid-template-columns:1fr 1fr;gap:7px"></div>
-    </div>
-  </div>
-
-  <!-- Save Bar -->
-  <div class="cfg-save-bar">
-    <button class="cfg-save-btn" id="cfgSaveBtn" onclick="saveAdminConfig()">
-      <svg id="cfgSaveIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-      Save Changes to Dashboard
-    </button>
-    <span class="cfg-saved-msg" id="cfgSavedMsg"></span>
-  </div>
-</div>
-
-</div><!-- /internal-shell -->
 
 <!-- ═══ CLIENT SHELL (external users only) ═══ -->
 <div id="client-shell" style="display:none;flex-direction:column;min-height:calc(100vh - 54px)">
@@ -783,6 +714,61 @@ async function doLogin() {
   <div id="page-tva" class="page active"><div id="c-tva"></div></div>
   <div id="page-info" class="page"><div id="c-info"></div></div>
   <div id="page-dash" class="page"><div id="c-dash"></div></div>
+
+  <!-- ═══ ADMIN CONFIG PAGE — only visible to admin users ═══ -->
+  <div id="page-config" class="page">
+    <div class="cfg-header">
+      <div>
+        <h2>Dashboard Configuration</h2>
+        <p>Toggle which indicators are visible on the dashboard. Changes take effect within 5 minutes.</p>
+      </div>
+    </div>
+    <div class="cfg-grid">
+      <div class="cfg-card">
+        <div class="cfg-card-head">
+          <div class="ci" style="background:#eff8ff">📊</div>
+          <div><h3>KPI Cards <span class="cfg-section-count" id="cfg-kpi-count"></span></h3><p>Summary cards at the top of the dashboard</p></div>
+        </div>
+        <div class="cfg-card-body" id="cfg-kpi-list"></div>
+      </div>
+      <div class="cfg-card">
+        <div class="cfg-card-head">
+          <div class="ci" style="background:#fff7ed">🏥</div>
+          <div><h3>Outcome Rows <span class="cfg-section-count" id="cfg-outcome-count"></span></h3><p>HIV Reactive rows in facility outcome tables</p></div>
+        </div>
+        <div class="cfg-card-body" id="cfg-outcome-list"></div>
+      </div>
+      <div class="cfg-card">
+        <div class="cfg-card-head">
+          <div class="ci" style="background:#f0fdf4">📋</div>
+          <div><h3>Training Rows <span class="cfg-section-count" id="cfg-train-count"></span></h3><p>Training &amp; Capacity Building table</p></div>
+        </div>
+        <div class="cfg-card-body" id="cfg-train-list"></div>
+      </div>
+      <div class="cfg-card">
+        <div class="cfg-card-head">
+          <div class="ci" style="background:#fdf4ff">💊</div>
+          <div><h3>Clinical Rows <span class="cfg-section-count" id="cfg-clin-count"></span></h3><p>Clinical Practice &amp; Follow-up table</p></div>
+        </div>
+        <div class="cfg-card-body" id="cfg-clin-list"></div>
+      </div>
+      <div class="cfg-card" style="grid-column:1/-1">
+        <div class="cfg-card-head">
+          <div class="ci" style="background:#f5f3ff">🔢</div>
+          <div><h3>Field Value Overrides</h3><p>Force a specific count to show a fixed number instead of live data. Tick "Override" and set value to 0 to suppress a count.</p></div>
+        </div>
+        <div class="cfg-card-body" id="cfg-override-list" style="display:grid;grid-template-columns:1fr 1fr;gap:7px"></div>
+      </div>
+    </div>
+    <div class="cfg-save-bar">
+      <button class="cfg-save-btn" id="cfgSaveBtn" onclick="saveAdminConfig()">
+        <svg id="cfgSaveIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Save Changes to Dashboard
+      </button>
+      <span class="cfg-saved-msg" id="cfgSavedMsg"></span>
+    </div>
+  </div>
+
 </div>
 </div>
 
