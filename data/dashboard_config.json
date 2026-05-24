@@ -1,8 +1,5 @@
 {
-  "hidden_kpis": [
-    "hiv_reactive",
-    "syphilis_reactive"
-  ],
+  "hidden_kpis": [],
   "hidden_training_rows": [
     "D4"
   ],
