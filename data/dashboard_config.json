@@ -1,11 +1,7 @@
 {
   "hidden_kpis": [],
-  "hidden_training_rows": [
-    "D4"
-  ],
-  "hidden_clinical_rows": [
-    "E1"
-  ],
+  "hidden_training_rows": [],
+  "hidden_clinical_rows": [],
   "hidden_outcome_rows": [
     "hwc_hiv"
   ],
