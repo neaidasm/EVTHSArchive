@@ -1028,6 +1028,7 @@ let MEETINGS_TOTAL    = 0;   // unfiltered total (used as fallback)
 let MEETINGS_BY_COORD = [0,0,0,0,0]; // unfiltered per-coordinator counts
 let FACILITY_MAP_TOTAL = 0;          // total EVTHS Facility Mapping submissions
 let FACILITY_MAP_BY_DISTRICT = { Nagaon:0, Hojai:0 }; // district breakdown
+let FAC_MAP_DATA = [];               // full parsed facility mapping records
 let dataSource = 'seed'; // 'seed' | 'live'
 
 /* GitHub config removed — workflow handles all data fetching */
@@ -1114,13 +1115,59 @@ async function fetchData() {
       const facMapRecs = facMapJson.results || [];
       FACILITY_MAP_TOTAL = facMapRecs.length;
       FACILITY_MAP_BY_DISTRICT = { Nagaon:0, Hojai:0 };
+
+      // Parse and store full records for Facility Readiness section
+      FAC_MAP_DATA = facMapRecs.filter(r => r['facility_details/facility_name']).map(r => {
+        const district = r['facility_details/district'] || '';
+        const block    = r['facility_details/block'] || '';
+        const facType  = (r['facility_details/facility_type'] || '').toLowerCase();
+        const facName  = r['facility_details/facility_name'] || '';
+        const coord    = r['facility_details/coordinator'] || '';
+        const secA     = r['secA'] || [];
+        const secB     = r['secB'] || [];
+        const secC     = r['secC'] || [];
+        const secD     = r['secD'] || [];
+
+        // Infrastructure readiness (Sec A)
+        let aRequired = 0, aAvailable = 0, aNonFunc = 0;
+        secA.forEach(i => {
+          const req = parseFloat(i['secA/a_required']) || 0;
+          const avl = parseFloat(i['secA/a_available']) || 0;
+          aRequired  += req;
+          aAvailable += avl;
+          if ((i['secA/a_functional'] || '').toLowerCase() === 'no') aNonFunc++;
+        });
+        const infraScore = aRequired > 0 ? Math.round(aAvailable / aRequired * 100) : null;
+
+        // Stockouts (Sec B)
+        const stockouts = secB.filter(i => (i['secB/b_stockout'] || '').toLowerCase() === 'yes')
+                              .map(i => i['secB/b_item']);
+        const noBuffer  = secB.filter(i => (i['secB/b_buffer'] || '').toLowerCase() === 'no')
+                              .map(i => i['secB/b_item']);
+
+        // Testing points (Sec C)
+        const testingPoints = secC.filter(i => (i['secC/c_has'] || '').toLowerCase() === 'yes')
+                                  .map(i => i['secC/c_point']);
+
+        // Records (Sec D)
+        let dAvail = 0, dUpd = 0, dTotal = secD.length;
+        secD.forEach(i => {
+          if ((i['secD/d_avail'] || '').toLowerCase() === 'yes') dAvail++;
+          if ((i['secD/d_upd']   || '').toLowerCase() === 'yes') dUpd++;
+        });
+        const recordScore = dTotal > 0 ? Math.round(dAvail / dTotal * 100) : null;
+
+        return { district, block, facType, facName, coord,
+                 infraScore, aRequired, aAvailable, aNonFunc,
+                 stockouts, noBuffer, testingPoints,
+                 recordScore, dAvail, dTotal, secA, secB, secC, secD };
+      });
+
       facMapRecs.forEach(r => {
-        // KoboToolbox exports "Facility Details /District" in several possible key formats
         const keys = Object.keys(r);
         const distKey = keys.find(k => {
           const n = k.toLowerCase().replace(/[^a-z0-9]/g, '');
           return n === 'facilitydetailsdistrict'
-              || n === 'facilitydetailsdistrict'
               || n.endsWith('district')
               || n === 'district';
         });
@@ -1755,6 +1802,9 @@ function renderDash(data){
       <canvas id="cv-db-blk"></canvas></div></div>
   </div>`;
 
+  // ── FACILITY READINESS container (populated by renderFacilityReadiness)
+  h += `<div id="c-fac-readiness"></div>`;
+
   document.getElementById('c-dash').innerHTML = h;
 
   // Compliance chart
@@ -1781,6 +1831,198 @@ function renderDash(data){
     options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
       plugins:{legend:{labels:{font:{size:10}}}},
       scales:{x:{beginAtZero:true,stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{font:{size:10}}}}}});
+
+  // Render facility readiness section
+  renderFacilityReadiness();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FACILITY READINESS — embedded section in Programme Dashboard
+═══════════════════════════════════════════════════════════ */
+function renderFacilityReadiness() {
+  const facs = FAC_MAP_DATA;
+  const el   = document.getElementById('c-fac-readiness');
+  if (!el) return;
+
+  if (!facs || facs.length === 0) {
+    el.innerHTML = `<div style="padding:20px;text-align:center;color:#6c757d;font-size:12px">
+      Facility mapping data not yet loaded.</div>`;
+    return;
+  }
+
+  function scoreClr(v) { return v===null?'#ccc':v>=80?'#80BD41':v>=50?'#FFC20E':'#E2231A'; }
+  function scoreBg(v)  { return v===null?'#f8f9fb':v>=80?'#f0fae8':v>=50?'#fffbe6':'#fceaea'; }
+  function ragBadge(v) {
+    if (v===null) return '<span style="color:#ccc">—</span>';
+    return `<span style="background:${scoreBg(v)};color:${scoreClr(v)};padding:2px 8px;border-radius:9px;font-size:10.5px;font-weight:700">${v}%</span>`;
+  }
+
+  // ── Aggregate KPIs
+  const withInfra    = facs.filter(f=>f.infraScore!==null);
+  const avgInfra     = withInfra.length ? Math.round(withInfra.reduce((s,f)=>s+f.infraScore,0)/withInfra.length) : null;
+  const stockoutFacs = facs.filter(f=>f.stockouts.length>0);
+  const testingAny   = facs.filter(f=>f.testingPoints.length>0);
+  const withRec      = facs.filter(f=>f.recordScore!==null);
+  const avgRecord    = withRec.length ? Math.round(withRec.reduce((s,f)=>s+f.recordScore,0)/withRec.length) : null;
+
+  // ── 4 KPI cards
+  let h = `
+  <div style="margin-top:24px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #1CABE2">
+      <span style="background:#E8F6FC;color:#0058AB;font-size:10px;font-weight:700;padding:3px 9px;border-radius:4px;letter-spacing:.5px">FACILITY MAPPING</span>
+      <span style="font-size:13px;font-weight:700;color:#0058AB">Facility Readiness Summary</span>
+      <span style="font-size:10.5px;color:#6c757d;margin-left:4px">${facs.length} facilities mapped</span>
+    </div>
+    <div class="kpi-row" style="margin-bottom:16px">
+      <div class="kpi blue" style="text-align:center">
+        <div class="kpi-lbl">Avg Infrastructure Readiness</div>
+        <div class="kpi-val" style="color:${scoreClr(avgInfra)}">${avgInfra!==null?avgInfra+'%':'—'}</div>
+        <div class="kpi-sub">${withInfra.length} facilities assessed</div>
+      </div>
+      <div class="kpi red" style="text-align:center">
+        <div class="kpi-lbl">Facilities with Stockouts</div>
+        <div class="kpi-val" style="color:${stockoutFacs.length>0?'#E2231A':'#80BD41'}">${stockoutFacs.length}</div>
+        <div class="kpi-sub">of ${facs.length} facilities</div>
+      </div>
+      <div class="kpi teal" style="text-align:center">
+        <div class="kpi-lbl">Testing Point Coverage</div>
+        <div class="kpi-val" style="color:${scoreClr(facs.length?Math.round(testingAny.length/facs.length*100):null)}">${facs.length?Math.round(testingAny.length/facs.length*100)+'%':'—'}</div>
+        <div class="kpi-sub">${testingAny.length} of ${facs.length} with ≥1 point</div>
+      </div>
+      <div class="kpi green" style="text-align:center">
+        <div class="kpi-lbl">Avg Record Keeping Score</div>
+        <div class="kpi-val" style="color:${scoreClr(avgRecord)}">${avgRecord!==null?avgRecord+'%':'—'}</div>
+        <div class="kpi-sub">${withRec.length} facilities assessed</div>
+      </div>
+    </div>`;
+
+  // ── Infrastructure gap totals per item
+  const itemGap={}, itemReq={};
+  facs.forEach(f=>{
+    f.secA.forEach(i=>{
+      const nm=i['secA/a_item']||'unknown';
+      const gap=parseFloat(i['secA/a_gap'])||0;
+      const req=parseFloat(i['secA/a_required'])||0;
+      if(!isNaN(gap)) itemGap[nm]=(itemGap[nm]||0)+gap;
+      if(!isNaN(req)) itemReq[nm]=(itemReq[nm]||0)+req;
+    });
+  });
+  const itemsSorted=Object.entries(itemGap).filter(([,v])=>!isNaN(v)&&v>0).sort((a,b)=>b[1]-a[1]);
+
+  // ── Stockout details
+  const stockoutRows=[];
+  facs.forEach(f=>{
+    f.stockouts.forEach(item=>{
+      stockoutRows.push({facName:f.facName,block:f.block,item});
+    });
+  });
+
+  // ── Block readiness
+  const blockMap={};
+  facs.forEach(f=>{
+    if(!blockMap[f.block]) blockMap[f.block]={infra:[],record:[],stockout:0,total:0};
+    blockMap[f.block].total++;
+    if(f.infraScore!==null)  blockMap[f.block].infra.push(f.infraScore);
+    if(f.recordScore!==null) blockMap[f.block].record.push(f.recordScore);
+    if(f.stockouts.length>0) blockMap[f.block].stockout++;
+  });
+  const blockRows=Object.entries(blockMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([blk,d])=>({
+    blk, total:d.total,
+    avgInfra:  d.infra.length  ? Math.round(d.infra.reduce((s,x)=>s+x,0)/d.infra.length)   : null,
+    avgRecord: d.record.length ? Math.round(d.record.reduce((s,x)=>s+x,0)/d.record.length) : null,
+    stockout:  d.stockout,
+  }));
+
+  // ── Chart + stockout table
+  h+=`<div class="chart-grid" style="margin-bottom:16px">
+    <div class="cc">
+      <div class="cc-head">Infrastructure Gap by Item</div>
+      <div class="cc-sub">Total units missing across all facilities</div>
+      <div class="cwrap" style="height:${Math.max(200,itemsSorted.length*32+60)}px">
+        <canvas id="cv-fac-infra"></canvas>
+      </div>
+    </div>
+    <div class="cc">
+      <div class="cc-head">Active Stockouts</div>
+      <div class="cc-sub">${stockoutRows.length} stockout(s) across ${stockoutFacs.length} facilit${stockoutFacs.length===1?'y':'ies'}</div>`;
+  if(stockoutRows.length===0){
+    h+=`<div style="padding:24px;text-align:center;color:#80BD41;font-weight:700;font-size:13px">✓ No active stockouts</div>`;
+  } else {
+    h+=`<div style="overflow-x:auto"><table style="min-width:0">
+      <thead><tr><th>Facility</th><th>Block</th><th>Item Out of Stock</th></tr></thead><tbody>`;
+    stockoutRows.forEach(r=>{
+      const lbl=r.item.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      h+=`<tr>
+        <td style="font-size:11.5px">${r.facName}</td>
+        <td style="font-size:11px;color:#6c757d">${r.block}</td>
+        <td><span style="background:#FCE8E8;color:#8B1A1A;padding:2px 8px;border-radius:9px;font-size:10.5px;font-weight:700">${lbl}</span></td>
+      </tr>`;
+    });
+    h+=`</tbody></table></div>`;
+  }
+  h+=`</div></div>`;
+
+  // ── Testing point coverage by facility type
+  const testPts=['anc','labour','pmsma','vhsnd'];
+  const testPtLbls={anc:'ANC',labour:'Labour Room',pmsma:'PMSMA',vhsnd:'VHSND'};
+  const facTypes=[...new Set(facs.map(f=>f.facType))].filter(Boolean).sort();
+  h+=`<div class="tbl-card" style="margin-bottom:16px">
+    <div class="tbl-title"><span class="tag t-eq">TESTING POINTS</span>Testing Point Coverage — Facilities with RDT Testing at Each Point</div>
+    <table><thead><tr><th>Facility Type</th>${testPts.map(p=>`<th>${testPtLbls[p]}</th>`).join('')}<th>Facilities</th></tr></thead><tbody>`;
+  facTypes.forEach(ft=>{
+    const grp=facs.filter(f=>f.facType===ft);
+    h+=`<tr><td style="font-weight:700;text-transform:uppercase;font-size:11px">${ft}</td>`;
+    testPts.forEach(pt=>{
+      const has=grp.filter(f=>f.testingPoints.includes(pt)).length;
+      const pct=grp.length?Math.round(has/grp.length*100):null;
+      h+=`<td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${pct||0}%;background:${scoreClr(pct)}"></div></div>
+        <span class="bar-lbl" style="color:${scoreClr(pct)}">${pct!==null?pct+'%':'—'}</span></div>
+        <div style="font-size:9px;color:#6c757d">${has}/${grp.length}</div></td>`;
+    });
+    h+=`<td style="font-size:11px;color:#6c757d;text-align:center">${grp.length}</td></tr>`;
+  });
+  h+=`</tbody></table></div>`;
+
+  // ── Block-level readiness table
+  h+=`<div class="tbl-card">
+    <div class="tbl-title"><span class="tag t-tr">BLOCK READINESS</span>Block-level Facility Readiness Overview</div>
+    <table><thead><tr>
+      <th>Block</th><th style="text-align:center">Facilities</th>
+      <th>Avg Infrastructure</th><th>Avg Record Keeping</th>
+      <th>Stockout Facilities</th>
+    </tr></thead><tbody>`;
+  blockRows.forEach(r=>{
+    h+=`<tr>
+      <td style="font-weight:600;font-size:12px">${r.blk}</td>
+      <td style="text-align:center">${r.total}</td>
+      <td>${ragBadge(r.avgInfra)}</td>
+      <td>${ragBadge(r.avgRecord)}</td>
+      <td style="text-align:center">${r.stockout>0
+        ?`<span style="background:#FCE8E8;color:#8B1A1A;padding:2px 8px;border-radius:9px;font-size:10.5px;font-weight:700">${r.stockout}</span>`
+        :`<span style="color:#80BD41;font-weight:700;font-size:11px">✓ None</span>`}
+      </td>
+    </tr>`;
+  });
+  h+=`</tbody></table></div></div>`;
+
+  el.innerHTML=h;
+
+  // ── Infrastructure gap chart
+  if(itemsSorted.length>0){
+    const labels=itemsSorted.map(([k])=>k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
+    const vals=itemsSorted.map(([,v])=>v);
+    const mx=Math.max(...vals);
+    mkChart('cv-fac-infra',{
+      type:'bar',
+      data:{labels,datasets:[{label:'Total Gap (units)',data:vals,
+        backgroundColor:vals.map(v=>v/mx>0.6?'rgba(226,35,26,.7)':v/mx>0.3?'rgba(255,194,14,.7)':'rgba(128,189,65,.7)'),
+        borderColor:vals.map(v=>v/mx>0.6?'#E2231A':v/mx>0.3?'#FFC20E':'#80BD41'),
+        borderWidth:1}]},
+      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+        plugins:{legend:{display:false}},
+        scales:{x:{beginAtZero:true,ticks:{font:{size:10}}},y:{ticks:{font:{size:10}}}}}
+    });
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
