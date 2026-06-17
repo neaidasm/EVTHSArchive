@@ -2629,6 +2629,8 @@ function renderClientProg(data) {
       <canvas id="cv-cp-blk"></canvas></div></div>
   </div>`;
 
+  h += `<div id="c-fac-readiness"></div>`;
+
   document.getElementById('c-client').innerHTML = h;
 
   // Compliance chart
@@ -2655,9 +2657,9 @@ function renderClientProg(data) {
     options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
       plugins:{legend:{labels:{font:{size:10}}}},
       scales:{x:{beginAtZero:true,stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{font:{size:10}}}}}});
-}
 
-function renderClientCompliance(data){
+  renderFacilityReadiness();
+}
   data = applyFieldOverrides(data); // apply config overrides
   const total=data.length;
   const fc={HWC:0,VHSND:0,PHC:0,PMSMA:0};
