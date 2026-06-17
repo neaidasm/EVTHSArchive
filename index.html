@@ -1883,11 +1883,6 @@ function renderFacilityReadiness() {
         <div class="kpi-val" style="color:${scoreClr(avgInfra)}">${avgInfra!==null?avgInfra+'%':'—'}</div>
         <div class="kpi-sub">${withInfra.length} facilities assessed</div>
       </div>
-      <div class="kpi red" style="text-align:center">
-        <div class="kpi-lbl">Facilities with Stockouts</div>
-        <div class="kpi-val" style="color:${stockoutFacs.length>0?'#E2231A':'#80BD41'}">${stockoutFacs.length}</div>
-        <div class="kpi-sub">of ${facs.length} facilities</div>
-      </div>
       <div class="kpi teal" style="text-align:center">
         <div class="kpi-lbl">Testing Point Coverage</div>
         <div class="kpi-val" style="color:${scoreClr(facs.length?Math.round(testingAny.length/facs.length*100):null)}">${facs.length?Math.round(testingAny.length/facs.length*100)+'%':'—'}</div>
@@ -1937,7 +1932,7 @@ function renderFacilityReadiness() {
     stockout:  d.stockout,
   }));
 
-  // ── Chart + stockout table
+  // ── Chart only (no stockout table)
   h+=`<div class="chart-grid" style="margin-bottom:16px">
     <div class="cc">
       <div class="cc-head">Infrastructure Gap by Item</div>
@@ -1946,25 +1941,7 @@ function renderFacilityReadiness() {
         <canvas id="cv-fac-infra"></canvas>
       </div>
     </div>
-    <div class="cc">
-      <div class="cc-head">Active Stockouts</div>
-      <div class="cc-sub">${stockoutRows.length} stockout(s) across ${stockoutFacs.length} facilit${stockoutFacs.length===1?'y':'ies'}</div>`;
-  if(stockoutRows.length===0){
-    h+=`<div style="padding:24px;text-align:center;color:#80BD41;font-weight:700;font-size:13px">✓ No active stockouts</div>`;
-  } else {
-    h+=`<div style="overflow-x:auto"><table style="min-width:0">
-      <thead><tr><th>Facility</th><th>Block</th><th>Item Out of Stock</th></tr></thead><tbody>`;
-    stockoutRows.forEach(r=>{
-      const lbl=(r.item||'').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) || 'Unknown';
-      h+=`<tr>
-        <td style="font-size:11.5px">${r.facName}</td>
-        <td style="font-size:11px;color:#6c757d">${r.block}</td>
-        <td><span style="background:#FCE8E8;color:#8B1A1A;padding:2px 8px;border-radius:9px;font-size:10.5px;font-weight:700">${lbl}</span></td>
-      </tr>`;
-    });
-    h+=`</tbody></table></div>`;
-  }
-  h+=`</div></div>`;
+  </div>`;
 
   // ── Testing point coverage by facility type
   const testPts=['anc','labour','pmsma','vhsnd'];
@@ -1993,7 +1970,6 @@ function renderFacilityReadiness() {
     <table><thead><tr>
       <th>Block</th><th style="text-align:center">Facilities</th>
       <th>Avg Infrastructure</th><th>Avg Record Keeping</th>
-      <th>Stockout Facilities</th>
     </tr></thead><tbody>`;
   blockRows.forEach(r=>{
     h+=`<tr>
@@ -2001,10 +1977,6 @@ function renderFacilityReadiness() {
       <td style="text-align:center">${r.total}</td>
       <td>${ragBadge(r.avgInfra)}</td>
       <td>${ragBadge(r.avgRecord)}</td>
-      <td style="text-align:center">${r.stockout>0
-        ?`<span style="background:#FCE8E8;color:#8B1A1A;padding:2px 8px;border-radius:9px;font-size:10.5px;font-weight:700">${r.stockout}</span>`
-        :`<span style="color:#80BD41;font-weight:700;font-size:11px">✓ None</span>`}
-      </td>
     </tr>`;
   });
   h+=`</tbody></table></div></div>`;
