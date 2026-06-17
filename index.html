@@ -1145,9 +1145,9 @@ async function fetchData() {
         const infraScore = aRequired > 0 ? Math.round(aAvailable / aRequired * 100) : null;
 
         // Stockouts (Sec B)
-        const stockouts = secB.filter(i => (i['secB/b_stockout'] || '').toLowerCase() === 'yes')
+        const stockouts = secB.filter(i => i['secB/b_item'] && (i['secB/b_stockout'] || '').toLowerCase() === 'yes')
                               .map(i => i['secB/b_item']);
-        const noBuffer  = secB.filter(i => (i['secB/b_buffer'] || '').toLowerCase() === 'no')
+        const noBuffer  = secB.filter(i => i['secB/b_item'] && (i['secB/b_buffer'] || '').toLowerCase() === 'no')
                               .map(i => i['secB/b_item']);
 
         // Testing points (Sec C)
@@ -1955,7 +1955,7 @@ function renderFacilityReadiness() {
     h+=`<div style="overflow-x:auto"><table style="min-width:0">
       <thead><tr><th>Facility</th><th>Block</th><th>Item Out of Stock</th></tr></thead><tbody>`;
     stockoutRows.forEach(r=>{
-      const lbl=r.item.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      const lbl=(r.item||'').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) || 'Unknown';
       h+=`<tr>
         <td style="font-size:11.5px">${r.facName}</td>
         <td style="font-size:11px;color:#6c757d">${r.block}</td>
