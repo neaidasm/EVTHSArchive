@@ -1936,10 +1936,11 @@ function renderFacilityReadiness() {
   // ── Block readiness
   const blockMap={};
   facs.forEach(f=>{
-    if(!blockMap[f.block]) blockMap[f.block]={infra:[],record:[],stockout:0,total:0};
+    if(!blockMap[f.block]) blockMap[f.block]={infra:[],record:[],stockout:0,total:0,
+      infraAvail:0,infraReq:0,recordAvail:0,recordTotal:0};
     blockMap[f.block].total++;
-    if(f.infraScore!==null)  blockMap[f.block].infra.push(f.infraScore);
-    if(f.recordScore!==null) blockMap[f.block].record.push(f.recordScore);
+    if(f.infraScore!==null)  { blockMap[f.block].infra.push(f.infraScore); blockMap[f.block].infraAvail+=f.aAvailable; blockMap[f.block].infraReq+=f.aRequired; }
+    if(f.recordScore!==null) { blockMap[f.block].record.push(f.recordScore); blockMap[f.block].recordAvail+=f.dAvail; blockMap[f.block].recordTotal+=f.dTotal; }
     if(f.stockouts.length>0) blockMap[f.block].stockout++;
   });
   const blockRows=Object.entries(blockMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([blk,d])=>({
@@ -1947,6 +1948,10 @@ function renderFacilityReadiness() {
     avgInfra:  d.infra.length  ? Math.round(d.infra.reduce((s,x)=>s+x,0)/d.infra.length)   : null,
     avgRecord: d.record.length ? Math.round(d.record.reduce((s,x)=>s+x,0)/d.record.length) : null,
     stockout:  d.stockout,
+    avgInfraAvail: d.infraReq>0  ? d.infraAvail  : null,
+    avgInfraReq:   d.infraReq>0  ? d.infraReq    : null,
+    avgRecordAvail:d.recordTotal>0? d.recordAvail : null,
+    avgRecordTotal:d.recordTotal>0? d.recordTotal : null,
   }));
 
   // ── Chart only (no stockout table)
@@ -1997,8 +2002,8 @@ function renderFacilityReadiness() {
     h+=`<tr>
       <td style="font-weight:600;font-size:12px">${r.blk}</td>
       <td style="text-align:center">${r.total}</td>
-      <td>${ragBadge(r.avgInfra)}</td>
-      <td>${ragBadge(r.avgRecord)}</td>
+      <td>${ragBadge(r.avgInfra)}<div style="font-size:9px;color:#6c757d;margin-top:2px">${r.avgInfraAvail!==null?r.avgInfraAvail+'/'+r.avgInfraReq+' items avg':''}</div></td>
+      <td>${ragBadge(r.avgRecord)}<div style="font-size:9px;color:#6c757d;margin-top:2px">${r.avgRecordAvail!==null?r.avgRecordAvail+'/'+r.avgRecordTotal+' registers avg':''}</div></td>
     </tr>`;
   });
   h+=`</tbody></table></div>
