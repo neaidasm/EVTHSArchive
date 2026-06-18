@@ -1124,8 +1124,25 @@ async function fetchData() {
       // Parse and store full records for Facility Readiness section
       FAC_MAP_DATA = facMapRecs.filter(r => r['facility_details/facility_name']).map(r => {
         const district = r['facility_details/district'] || '';
-        const block    = r['facility_details/block'] || '';
-        const facType  = (r['facility_details/facility_type'] || '').toLowerCase();
+
+        // Normalize block name — trim, title case, collapse duplicates caused by spacing/casing
+        const normBlock = (s) => {
+          return (s || '').trim()
+            .toLowerCase()
+            .replace(/\b\w/g, c => c.toUpperCase())  // title case
+            .replace(/\s+/g, ' ')                      // collapse spaces
+            .replace(/Bphc$/i, 'BPHC')                // uppercase BPHC suffix
+            .replace(/Phc$/i,  'PHC')                 // uppercase PHC suffix
+            .replace(/Chc$/i,  'CHC')                 // uppercase CHC suffix
+            .replace(/Mphc$/i, 'MPHC');               // uppercase MPHC suffix
+        };
+        const block = normBlock(r['facility_details/block']);
+
+        // Normalize facility type — take first value only (handles multi-select), map to standard
+        const rawType = (r['facility_details/facility_type'] || '').toLowerCase().split(' ')[0].trim();
+        const facTypeMap = { 'hwc':'HWC', 'phc':'PHC', 'chc':'CHC', 'pmsma':'PMSMA', 'vhsnd':'VHSND', 'labour_room':'Labour Room', 'labour':'Labour Room' };
+        const facType = facTypeMap[rawType] || rawType.toUpperCase();
+
         const facName  = r['facility_details/facility_name'] || '';
         const coord    = r['facility_details/coordinator'] || '';
         const secA     = r['secA'] || [];
