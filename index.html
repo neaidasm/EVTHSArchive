@@ -1981,14 +1981,19 @@ function renderFacilityReadiness() {
   });
   h+=`</tbody></table></div>`;
 
-  // ── Block-level readiness table
-  h+=`<div class="tbl-card">
-    <div class="tbl-title"><span class="tag t-tr">BLOCK READINESS</span>Block-level Facility Readiness Overview</div>
-    <table><thead><tr>
-      <th>Block</th><th style="text-align:center">Facilities</th>
-      <th>Avg Infrastructure</th><th>Avg Record Keeping</th>
-    </tr></thead><tbody>`;
-  blockRows.forEach(r=>{
+  // ── Block readiness — filter out empty block names
+  const validBlockRows = blockRows.filter(r => r.blk && r.blk.trim());
+
+  // ── Block-level readiness — table + chart side by side
+  const blockChartHeight = Math.max(260, validBlockRows.length * 36 + 60);
+  h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+    <div class="tbl-card" style="margin-bottom:0">
+      <div class="tbl-title"><span class="tag t-tr">BLOCK READINESS</span>Block-level Facility Readiness Overview</div>
+      <table><thead><tr>
+        <th>Block</th><th style="text-align:center">Facilities</th>
+        <th>Avg Infrastructure</th><th>Avg Record Keeping</th>
+      </tr></thead><tbody>`;
+  validBlockRows.forEach(r=>{
     h+=`<tr>
       <td style="font-weight:600;font-size:12px">${r.blk}</td>
       <td style="text-align:center">${r.total}</td>
@@ -1996,7 +2001,15 @@ function renderFacilityReadiness() {
       <td>${ragBadge(r.avgRecord)}</td>
     </tr>`;
   });
-  h+=`</tbody></table></div></div>`;
+  h+=`</tbody></table></div>
+    <div class="cc" style="margin-bottom:0">
+      <div class="cc-head">Block Readiness Scores</div>
+      <div class="cc-sub">Avg Infrastructure vs Avg Record Keeping per block</div>
+      <div class="cwrap" style="height:${blockChartHeight}px">
+        <canvas id="cv-fac-block"></canvas>
+      </div>
+    </div>
+  </div></div>`;
 
   el.innerHTML=h;
 
@@ -2014,6 +2027,36 @@ function renderFacilityReadiness() {
       options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
         plugins:{legend:{display:false}},
         scales:{x:{beginAtZero:true,ticks:{font:{size:10}}},y:{ticks:{font:{size:10}}}}}
+    });
+  }
+
+  // ── Block readiness chart
+  if(validBlockRows.length>0){
+    const blkLabels = validBlockRows.map(r=>r.blk);
+    const infraVals = validBlockRows.map(r=>r.avgInfra||0);
+    const recVals   = validBlockRows.map(r=>r.avgRecord||0);
+    mkChart('cv-fac-block',{
+      type:'bar',
+      data:{
+        labels:blkLabels,
+        datasets:[
+          {label:'Avg Infrastructure %', data:infraVals,
+           backgroundColor:infraVals.map(v=>v>=80?'rgba(128,189,65,.75)':v>=50?'rgba(255,194,14,.75)':'rgba(226,35,26,.75)'),
+           borderColor:infraVals.map(v=>v>=80?'#80BD41':v>=50?'#FFC20E':'#E2231A'),
+           borderWidth:1},
+          {label:'Avg Record Keeping %', data:recVals,
+           backgroundColor:'rgba(28,171,226,.45)',
+           borderColor:'#1CABE2', borderWidth:1},
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false, indexAxis:'y',
+        plugins:{legend:{position:'top',labels:{font:{size:10}}}},
+        scales:{
+          x:{beginAtZero:true,max:100,ticks:{font:{size:10},callback:v=>v+'%'},grid:{color:'#f0f0f0'}},
+          y:{ticks:{font:{size:10}}}
+        }
+      }
     });
   }
 }
